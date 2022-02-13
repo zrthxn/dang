@@ -1,0 +1,57 @@
+## Function -----------------
+fn name:str | a1:int a3:ptr a2:str |
+	# body
+end
+
+KEYWORD fn 
+	SIGNATURE name:str | a1:int a3:ptr a2:str |
+		IDENTIFIER name:str 
+			NAME name RETTYPE str
+		DELIM | 
+		ARGUMENTS a1:int a3:ptr a2:str 
+			[0] NAME a1 TYPE int
+			[1] NAME a3 TYPE ptr
+			[2] NAME a2 TYPE str
+		DELIM |
+	# body
+KEYWORD end
+
+var a:int = xname <| name <| x y z X
+var b:int = x * y + z
+
+func name ;
+	# body
+end
+
+## Operations ---------------
+
++  add
+-  subtract
+*  multiply
+/  divide
+%  modulo
+// -- increment   // probably a bit too hard for now
+// ++ decrement   //
+// *x dereference //
+<| call
+>  gr than
+<  less than
+=  assign
+== logical equal
+!= logical not equal
+&& logical and
+|| logical or
+!! logical not
+^^ logical xor
+<< shift left
+>> shift right
+|  bitwise or
+^  bitwise xor
+&  bitwise and
+~  bitwise not
+
+
+
+
+
+
