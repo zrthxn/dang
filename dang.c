@@ -64,7 +64,7 @@ typedef enum
 	// DECREMENT, // --
 	// DEREF, // *
 }
-Operation;
+Operator;
 
 
 enum ValueTypes {
@@ -78,9 +78,9 @@ struct Literal
 {
 	enum ValueTypes type;
 	union {
-		int;
-		float;
-		str;
+		int __i;
+		float __f;
+		str __s;
 	} value;
 };
 
@@ -95,7 +95,7 @@ typedef enum TokenTypes {
 	KeywordToken,
 	LiteralToken,
 	IdentifierToken,
-	OperationToken,
+	OperatorToken,
 } 
 TokenType;
 
@@ -103,10 +103,10 @@ struct Token
 {
 	TokenType type;
 	union {
-		Keyword;
-		Operation;
-		struct Literal;
-		struct Identifier;
+		Keyword __k;
+		Operator __o;
+		struct Literal __l;
+		struct Identifier __i;
 	} token;
 
 	struct Token* next;
