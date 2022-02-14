@@ -8,8 +8,13 @@ typedef char* str;
 // --------------------------
 // Lexer --------------------
 
-void lex() {
+str* lex(str file, size_t length) {
+	/**
+	 * @brief Lex file into logical words
+	 */
 
+	str* lexicon;
+	return lexicon;
 }
 
 // --------------------------
@@ -25,7 +30,7 @@ typedef enum
 	END,
 	WHILE,
 	DO,
-	USE,
+	INCLUDE,
 } 
 Keyword;
 
@@ -66,32 +71,36 @@ typedef enum
 }
 Operator;
 
+typedef enum {
+	IntValue,
+	FloatValue,
+	StringValue,
+	NullValue,
+}
+ValueType;
 
-enum ValueTypes {
-	Int,
-	Float,
-	String,
-	Null,
-};
 
-struct Literal 
+typedef struct 
 {
-	enum ValueTypes type;
+	ValueType type;
 	union {
 		int __i;
 		float __f;
 		str __s;
 	} value;
-};
+}
+Literal;
 
-struct Identifier 
+typedef struct  
 {
 	str name;
-	enum ValueTypes type;
-};
+	ValueType type;
+} 
+Identifier;
 
 
-typedef enum TokenTypes {
+typedef enum 
+{
 	KeywordToken,
 	LiteralToken,
 	IdentifierToken,
@@ -99,22 +108,50 @@ typedef enum TokenTypes {
 } 
 TokenType;
 
-struct Token
+typedef struct 
 {
 	TokenType type;
 	union {
 		Keyword __k;
 		Operator __o;
-		struct Literal __l;
-		struct Identifier __i;
+		Identifier __i;
+		Literal __l;
 	} token;
 
 	struct Token* next;
 	struct Token* prev;
-};
+}
+Token;
 
-void parser() {
+Token* parse(str* lexicon) {
+	/**
+	 * @brief Parse words into token stream
+	 */
 
+	Token* TokenStream;
+
+	while (lexicon != NULL)
+	{
+		// Literal __l = {
+		// 	.type = NullValue,
+		// 	.value = 0,
+		// };
+
+		Token new = {
+			.type = KeywordToken,
+			.token = END,
+			.prev = TokenStream,
+			.next = NULL,
+		};
+
+		TokenStream->next = &new;
+
+		// Advance to next lex
+		lexicon = &lexicon[1];
+		free(lexicon[0]);
+	}
+	
+	return TokenStream;
 }
 
 // --------------------------
@@ -145,13 +182,48 @@ void printall(str* array, size_t size) {
 }
 
 
-void readTargetFile(str filename) {
+void readTargetFile(str filename, str* buffer, int* size) {
+	/**
+	 * @brief Read file into buffer as string
+	 */
+
 	FILE* f_ptr = fopen(filename, "r");
 
+	if (f_ptr == NULL) {
+		fprintf(stderr, "\nCouldn't open file \"%s\"\n", filename);
+		exit(1);
+	}
 
+	// Find size of file
+	fseek(f_ptr, 0L, SEEK_END);
+	*size = ftell(f_ptr);
+	fseek(f_ptr, 0L, SEEK_SET);
+
+	// Allocate that many bytes and read
+	*buffer = malloc((*size)*sizeof(char));
+	fgets(*buffer, *size, f_ptr);
 
 	fclose(f_ptr);
 }
+
+
+void compileTarget(const str filename) {
+	/**
+	 * @brief Generate code corresponding to stream 
+	 */
+
+	printf("Compiling target %s...", filename);
+	fflush(stdout);
+
+	str buffer;
+	int b_size = 0; 
+	
+	readTargetFile(filename, &buffer, &b_size);
+	printf("\b\b\b, %d bytes.\n", b_size);
+
+	// lex and parse
+}
+
 
 int main(int argc, str argv[]) {
 	// dang -f <target>.dang --Flag
@@ -164,6 +236,7 @@ int main(int argc, str argv[]) {
 	str* cflags = malloc( argc * sizeof(str) );
 	int n_targets = 0, n_cflags = 0;
 
+	int __c = argc;
 	while(argc) {
 		str arg = argv[--argc];
 		if (isTargetFile(arg))
@@ -174,9 +247,9 @@ int main(int argc, str argv[]) {
 			printf("Ignoring unknown argument \"%s\"\n", arg);
 	}
 
-	for (size_t i = n_targets; i < argc; i++)
+	for (size_t i = n_targets; i < __c; i++)
 		free(targets[i]);
-	for (size_t i = n_cflags; i < argc; i++)
+	for (size_t i = n_cflags; i < __c; i++)
 		free(cflags[i]);
 
 	/**
@@ -188,19 +261,26 @@ int main(int argc, str argv[]) {
 	 * - decide token struct
 	 */
 
-	for (size_t i = 0; i < n_targets; i++)
+	while(n_targets) 
 	{
-		const str target = targets[i];
-		printf("Compiling target %s\n", target);
+		const str target = *targets;
 
 		/**
-		 * @brief Read target file
-		 * @todo 
+		 * @brief Compilation
+		 * 1. Read file into buffer as string
+		 * 2. Lex file into logical words
+		 * 3. Parse words into token stream
+		 * 4. Generate code corresponding to stream 
+		 * 5. Pop target from targets array
 		 */
 
+		compileTarget(target);
 
+		// Shift base pointer ahead
+		targets = &targets[1];
+		free(targets[0]);
+		n_targets--;
 	}
-	
 
 	return 0;
 }
