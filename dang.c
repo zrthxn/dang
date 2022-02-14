@@ -8,12 +8,49 @@ typedef char* str;
 // --------------------------
 // Lexer --------------------
 
-str* lex(str file, size_t length) {
+void readTargetFile(str filename, str* buffer, int* size) {
+	/**
+	 * @brief Read file into buffer as string
+	 */
+
+	FILE* f_ptr = fopen(filename, "r");
+
+	if (f_ptr == NULL) {
+		fprintf(stderr, "\nCouldn't open file \"%s\"\n", filename);
+		exit(1);
+	}
+
+	// Find size of file
+	fseek(f_ptr, 0L, SEEK_END);
+	*size = ftell(f_ptr);
+	fseek(f_ptr, 0L, SEEK_SET);
+
+	// Allocate that many bytes and read
+	*buffer = malloc((*size)*sizeof(char));
+	fgets(*buffer, *size, f_ptr);
+
+	fclose(f_ptr);
+}
+
+
+str* lex(const str filename) {
 	/**
 	 * @brief Lex file into logical words
 	 */
 
+	str buffer;
+	int size;
+
+	readTargetFile(filename, &buffer, &size);
+	printf("\b\b\b, %d bytes.\n", size);
+
 	str* lexicon;
+	unsigned int length = 0;
+
+	// lex
+
+	lexicon[length] = malloc(sizeof(str));
+	lexicon[length] = NULL;
 	return lexicon;
 }
 
@@ -123,15 +160,24 @@ typedef struct
 }
 Token;
 
-Token* parse(str* lexicon) {
+
+Token* parse(const str filename) {
 	/**
 	 * @brief Parse words into token stream
 	 */
 
 	Token* TokenStream;
-
+	
+	str* lexicon = lex(filename);
 	while (lexicon != NULL)
 	{
+		const str lex = *lexicon;
+
+		// Includes
+		if(lex=="include") {
+			// parse( next lex )
+		} 
+
 		// Literal __l = {
 		// 	.type = NullValue,
 		// 	.value = 0,
@@ -182,31 +228,6 @@ void printall(str* array, size_t size) {
 }
 
 
-void readTargetFile(str filename, str* buffer, int* size) {
-	/**
-	 * @brief Read file into buffer as string
-	 */
-
-	FILE* f_ptr = fopen(filename, "r");
-
-	if (f_ptr == NULL) {
-		fprintf(stderr, "\nCouldn't open file \"%s\"\n", filename);
-		exit(1);
-	}
-
-	// Find size of file
-	fseek(f_ptr, 0L, SEEK_END);
-	*size = ftell(f_ptr);
-	fseek(f_ptr, 0L, SEEK_SET);
-
-	// Allocate that many bytes and read
-	*buffer = malloc((*size)*sizeof(char));
-	fgets(*buffer, *size, f_ptr);
-
-	fclose(f_ptr);
-}
-
-
 void compileTarget(const str filename) {
 	/**
 	 * @brief Generate code corresponding to stream 
@@ -215,15 +236,19 @@ void compileTarget(const str filename) {
 	printf("Compiling target %s...", filename);
 	fflush(stdout);
 
-	str buffer;
-	int b_size = 0; 
-	
-	readTargetFile(filename, &buffer, &b_size);
-	printf("\b\b\b, %d bytes.\n", b_size);
-
 	// lex and parse
-}
+	Token* stream = parse(filename);
 
+	// Generate asm code
+	Token* head = stream;
+	while(head->next != NULL)
+	{
+
+		// Traverse
+		head = head->next;
+	}
+	
+}
 
 int main(int argc, str argv[]) {
 	// dang -f <target>.dang --Flag
