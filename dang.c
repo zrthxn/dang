@@ -5,11 +5,15 @@
 typedef enum { false, true } bool;
 typedef char* str;
 
+void printall(str* array, size_t size) {
+	for (size_t i = 0; i < size; i++)
+		printf("%s\n", array[i]);
+}
+
 // --------------------------
 // Lexer --------------------
 
-void readTargetFile(str filename, str* buffer, int* size)
-{
+void readTargetFile(str filename, str* buffer, unsigned int* size) {
 	/**
 	 * @brief Read file into buffer as string
 	 */
@@ -18,6 +22,7 @@ void readTargetFile(str filename, str* buffer, int* size)
 
 	if (f_ptr == NULL) {
 		fprintf(stderr, "\nCouldn't open file \"%s\"\n", filename);
+		fflush(stderr);
 		exit(1);
 	}
 
@@ -28,32 +33,96 @@ void readTargetFile(str filename, str* buffer, int* size)
 
 	// Allocate that many bytes and read
 	*buffer = malloc((*size) * sizeof(char));
-	fgets(*buffer, *size, f_ptr);
+
+	unsigned int index = 0;
+	while (index < *size) {
+		char c = fgetc(f_ptr);
+		if (c != EOF) 
+			(*buffer)[index++] = c;
+		else {
+			if (index != *size)
+				fprintf(stderr, "\nEncountered EOF after %u bytes.\n", index);
+			break;
+		}
+	}
 
 	fclose(f_ptr);
 }
 
-str* lex(const str filename, unsigned int* lexsize) {
+void lex(const str filename, str** lexicon, unsigned int* lexsize) {
 	/**
 	 * @brief Lex file into logical words
 	 */
 
 	str buffer;
-	int size;
+	unsigned int size;
 
 	readTargetFile(filename, &buffer, &size);
 	printf("\b\b\b, %d bytes.\n", size);
 
-	str* lexicon;
-	unsigned int length = 0;
+	str* __lexicon;
+	size_t length = 0;
+	str current = "";
+	unsigned int __ci = 0;
 
-	// lexing
-	// length++;
+	while (size) 
+	{
+		const char c = *buffer;
+
+		if (
+			// Ignore LF, TAB and SPACE, 
+			(c != '\n' && c != '\t' && c != ' ') ||
+			// unless first char of current word is quote
+			// and the quote isnt closed yet; for strings
+			(current[0] == '\"' && (__ci > 0 ? current[__ci-1] != '\"' : true))
+		)
+		{
+			char new[++__ci];
+			for (size_t i = 0; i < __ci-1; i++)
+				new[i] = current[i];
+
+			new[__ci-1] = c; new[__ci] = '\0';
+			
+			current = malloc((__ci + 1) * sizeof(char));
+			strcpy(current, new);
+		}
+		// time to add a new lex
+		else if (strcmp(current, "") != 0)
+		{
+			str __lexes[++length];
+			// Save previous entries
+			if (length > 1) for (size_t i = 0; i < length-1; i++) {
+				__lexes[i] = malloc(strlen(__lexicon[i]) * sizeof(char));
+				strcpy(__lexes[i], __lexicon[i]);
+			}
+
+			// Add new entry
+			__lexes[length-1] = malloc((__ci + 1) * sizeof(char));
+			strcpy(__lexes[length-1], current);
+
+			// Copy all to new location
+			__lexicon = malloc((length) * sizeof(str));
+			for (size_t i = 0; i < length; i++) {
+				__lexicon[i] = malloc(strlen(__lexes[i]) * sizeof(char));
+				strcpy(__lexicon[i], __lexes[i]);
+			}
+
+			// printf("LEX %s\n", __lexicon[length-1]);
+			current = malloc(sizeof(char));
+			strcpy(current, "");
+			__ci = 0;
+		}			
+
+		buffer = &buffer[1];
+		size--;
+	}
 
 	*lexsize = length;
-	*lexicon[length] = NULL;
-
-	return lexicon;
+	*lexicon = malloc((*lexsize) * sizeof(str*));
+	for (size_t i = 0; i < *lexsize; i++) {
+		(*lexicon)[i] = malloc(strlen(__lexicon[i]) * sizeof(char));
+		strcpy((*lexicon)[i], __lexicon[i]);
+	}
 }
 
 // --------------------------
@@ -155,28 +224,30 @@ typedef struct
 } Token;
 
 
-Token* parse(const str filename, unsigned int* parselen)
-{
+Token* parse(const str filename, unsigned int* parselen) {
 	/**
 	 * @brief Parse words into token stream
 	 */
 
-	int lexsize = 0;
-	str* lexicon = lex(filename, &lexsize);
+	unsigned int lexsize = 0;
+	str* lexicon; 
+	lex(filename, &lexicon, &lexsize);
 
-	Token* TokenStream;
+	printall(lexicon, lexsize);
+	exit(0);
+
+	Token* TokenStream = malloc(sizeof(Token));
 	unsigned int length = 0;
 
-	while (lexsize && lexicon != NULL)
+	while (lexsize)
 	{
-		const str lex = *lexicon;
+		const str word = *lexicon;
 
-		// TokenStream[length] = malloc(sizeof(Token));
+		// *(&TokenStream[length]) = malloc(sizeof(Token));
 
 		// Includes
-		if (strcmp(lex, "include"))
-		{
-			// parse( next lex )
+		if (strcmp(word, "include")) {
+			// parse( next word )
 		}
 
 		// Token new = {
@@ -190,7 +261,6 @@ Token* parse(const str filename, unsigned int* parselen)
 
 		// Advance to next lex
 		lexicon = &lexicon[1];
-		free(lexicon[0]);
 		lexsize--;
 
 		length++;
@@ -203,8 +273,7 @@ Token* parse(const str filename, unsigned int* parselen)
 // --------------------------
 // Main ---------------------
 
-bool isTargetFile(str arg)
-{
+bool isTargetFile(str arg) {
 	if (strlen(arg) < 5)
 		return false;
 
@@ -215,8 +284,7 @@ bool isTargetFile(str arg)
 		return false;
 }
 
-bool isCompilerFlag(str arg)
-{
+bool isCompilerFlag(str arg) {
 	if (strlen(arg) < 2)
 		return false;
 
@@ -226,14 +294,7 @@ bool isCompilerFlag(str arg)
 		return false;
 }
 
-void printall(str* array, size_t size)
-{
-	for (size_t i = 0; i < size; i++)
-		printf("%s\n", array[i]);
-}
-
-void compileTarget(const str filename)
-{
+void compileTarget(const str filename) {
 	/**
 	 * @brief Generate code corresponding to stream 
 	 */
@@ -244,15 +305,13 @@ void compileTarget(const str filename)
 	// lex and parse
 	unsigned int length = 0;
 	Token* stream = parse(filename, &length);
-	printf("\nparsed\n");
 
 	// Generate asm code
-	while (length && stream != NULL)
+	while (length)
 	{
 		Token token = *stream;
 
 		stream = &stream[1];
-		// free(stream[0]);
 		length--;
 	}
 }
@@ -312,7 +371,6 @@ int main(int argc, str argv[])
 
 		// Shift base pointer ahead
 		targets = &targets[1];
-		free(targets[0]);
 		n_targets--;
 	}
 
