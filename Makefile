@@ -1,11 +1,12 @@
 COMPILER = clang
+CFLAGS = -g
 
 .PHONY: all build compiler bootstrap
 
 all: build compiler
 	
 build:
-	$(COMPILER) dang.c -o dang
+	$(COMPILER) $(CFLAGS) dang.c -o dang
 
 compiler: build
 	./dang dang.dang

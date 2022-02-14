@@ -8,7 +8,8 @@ typedef char* str;
 // --------------------------
 // Lexer --------------------
 
-void readTargetFile(str filename, str* buffer, int* size) {
+void readTargetFile(str filename, str* buffer, int* size)
+{
 	/**
 	 * @brief Read file into buffer as string
 	 */
@@ -26,14 +27,13 @@ void readTargetFile(str filename, str* buffer, int* size) {
 	fseek(f_ptr, 0L, SEEK_SET);
 
 	// Allocate that many bytes and read
-	*buffer = malloc((*size)*sizeof(char));
+	*buffer = malloc((*size) * sizeof(char));
 	fgets(*buffer, *size, f_ptr);
 
 	fclose(f_ptr);
 }
 
-
-str* lex(const str filename) {
+str* lex(const str filename, unsigned int* lexsize) {
 	/**
 	 * @brief Lex file into logical words
 	 */
@@ -47,17 +47,19 @@ str* lex(const str filename) {
 	str* lexicon;
 	unsigned int length = 0;
 
-	// lex
+	// lexing
+	// length++;
 
-	lexicon[length] = malloc(sizeof(str));
-	lexicon[length] = NULL;
+	*lexsize = length;
+	*lexicon[length] = NULL;
+
 	return lexicon;
 }
 
 // --------------------------
 // Parser -------------------
 
-typedef enum 
+typedef enum
 {
 	VAR,
 	FN,
@@ -68,12 +70,11 @@ typedef enum
 	WHILE,
 	DO,
 	INCLUDE,
-} 
-Keyword;
+} Keyword;
 
-typedef enum 
+typedef enum
 {
-	// Binary Ops 
+	// Binary Ops
 	ADD, // +
 	SUB, // -
 	MUL, // *
@@ -81,140 +82,143 @@ typedef enum
 	MOD, // %
 
 	ASSIGN, // =
-	CALL,   // <|
-	
-	LOGICAL_GREATER_THAN, // >
-	LOGICAL_LESS_THAN,    // <
-	LOGICAL_EQUAL,        // ==
-	LOGICAL_NOT_EQUAL,    // !=
-	LOGICAL_AND,          // &&
-	LOGICAL_OR,           // ||
-	LOGICAL_XOR,          // ^^
+	CALL,		// <|
 
-	BIT_SHIFT_LEFT,  // <<
+	LOGICAL_GREATER_THAN, // >
+	LOGICAL_LESS_THAN,		// <
+	LOGICAL_EQUAL,				// ==
+	LOGICAL_NOT_EQUAL,		// !=
+	LOGICAL_AND,					// &&
+	LOGICAL_OR,						// ||
+	LOGICAL_XOR,					// ^^
+
+	BIT_SHIFT_LEFT,	 // <<
 	BIT_SHIFT_RIGHT, // >>
 
 	BIT_AND, // &
-	BIT_OR,  // |
+	BIT_OR,	 // |
 	BIT_XOR, // ^
 
 	// Unary Ops
-	BIT_NOT, 			// !
-	LOGICAL_NOT,  // !!
-	
+	BIT_NOT,		 // !
+	LOGICAL_NOT, // !!
+
 	// INCREMENT, // ++
 	// DECREMENT, // --
 	// DEREF, // *
-}
+} 
 Operator;
 
-typedef enum {
+typedef enum
+{
 	IntValue,
 	FloatValue,
 	StringValue,
 	NullValue,
-}
-ValueType;
+} ValueType;
 
-
-typedef struct 
+typedef struct
 {
 	ValueType type;
-	union {
+	union
+	{
 		int __i;
 		float __f;
 		str __s;
 	} value;
-}
-Literal;
+} Literal;
 
-typedef struct  
+typedef struct
 {
 	str name;
 	ValueType type;
-} 
-Identifier;
+} Identifier;
 
-
-typedef enum 
+typedef enum
 {
 	KeywordToken,
 	LiteralToken,
 	IdentifierToken,
 	OperatorToken,
-} 
-TokenType;
+} TokenType;
 
-typedef struct 
+typedef struct
 {
 	TokenType type;
-	union {
+	union
+	{
 		Keyword __k;
 		Operator __o;
 		Identifier __i;
 		Literal __l;
 	} token;
-
-	struct Token* next;
-	struct Token* prev;
-}
-Token;
+} Token;
 
 
-Token* parse(const str filename) {
+Token* parse(const str filename, unsigned int* parselen)
+{
 	/**
 	 * @brief Parse words into token stream
 	 */
 
+	int lexsize = 0;
+	str* lexicon = lex(filename, &lexsize);
+
 	Token* TokenStream;
-	
-	str* lexicon = lex(filename);
-	while (lexicon != NULL)
+	unsigned int length = 0;
+
+	while (lexsize && lexicon != NULL)
 	{
 		const str lex = *lexicon;
 
-		// Includes
-		if(lex=="include") {
-			// parse( next lex )
-		} 
+		// TokenStream[length] = malloc(sizeof(Token));
 
-		// Literal __l = {
-		// 	.type = NullValue,
-		// 	.value = 0,
+		// Includes
+		if (strcmp(lex, "include"))
+		{
+			// parse( next lex )
+		}
+
+		// Token new = {
+		// 	.type = KeywordToken,
+		// 	.token = END,
+		// 	.prev = TokenStream,
+		// 	.next = NULL,
 		// };
 
-		Token new = {
-			.type = KeywordToken,
-			.token = END,
-			.prev = TokenStream,
-			.next = NULL,
-		};
-
-		TokenStream->next = &new;
+		// TokenStream->next = &new;
 
 		// Advance to next lex
 		lexicon = &lexicon[1];
 		free(lexicon[0]);
+		lexsize--;
+
+		length++;
 	}
-	
+
+	*parselen = length;
 	return TokenStream;
 }
 
 // --------------------------
 // Main ---------------------
 
-bool isTargetFile(str arg) {
-	if(strlen(arg) < 5) return false;
+bool isTargetFile(str arg)
+{
+	if (strlen(arg) < 5)
+		return false;
 
-	str ending = &arg[ strlen(arg) - 5];
+	str ending = &arg[strlen(arg) - 5];
 	if (strcmp(ending, ".dang") == 0)
 		return true;
 	else
 		return false;
 }
 
-bool isCompilerFlag(str arg) {
-	if(strlen(arg) < 2) return false;
+bool isCompilerFlag(str arg)
+{
+	if (strlen(arg) < 2)
+		return false;
 
 	if (arg[0] == '-')
 		return true;
@@ -222,13 +226,14 @@ bool isCompilerFlag(str arg) {
 		return false;
 }
 
-void printall(str* array, size_t size) {
+void printall(str* array, size_t size)
+{
 	for (size_t i = 0; i < size; i++)
 		printf("%s\n", array[i]);
 }
 
-
-void compileTarget(const str filename) {
+void compileTarget(const str filename)
+{
 	/**
 	 * @brief Generate code corresponding to stream 
 	 */
@@ -237,32 +242,36 @@ void compileTarget(const str filename) {
 	fflush(stdout);
 
 	// lex and parse
-	Token* stream = parse(filename);
+	unsigned int length = 0;
+	Token* stream = parse(filename, &length);
+	printf("\nparsed\n");
 
 	// Generate asm code
-	Token* head = stream;
-	while(head->next != NULL)
+	while (length && stream != NULL)
 	{
+		Token token = *stream;
 
-		// Traverse
-		head = head->next;
+		stream = &stream[1];
+		// free(stream[0]);
+		length--;
 	}
-	
 }
 
-int main(int argc, str argv[]) {
+int main(int argc, str argv[])
+{
 	// dang -f <target>.dang --Flag
-	
-	// Ignore name of binary 
+
+	// Ignore name of binary
 	argv = &argv[1];
 	argc--;
 
-	str* targets = malloc( argc * sizeof(str) );	
-	str* cflags = malloc( argc * sizeof(str) );
+	str* targets = malloc(argc * sizeof(str));
+	str* cflags = malloc(argc * sizeof(str));
 	int n_targets = 0, n_cflags = 0;
 
 	int __c = argc;
-	while(argc) {
+	while (argc)
+	{
 		str arg = argv[--argc];
 		if (isTargetFile(arg))
 			targets[n_targets++] = arg;
@@ -286,7 +295,7 @@ int main(int argc, str argv[]) {
 	 * - decide token struct
 	 */
 
-	while(n_targets) 
+	while (n_targets)
 	{
 		const str target = *targets;
 
@@ -309,4 +318,3 @@ int main(int argc, str argv[]) {
 
 	return 0;
 }
-
