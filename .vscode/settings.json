@@ -2,6 +2,24 @@
   "makefile.extensionOutputFolder": "./.vscode",
   "files.associations": {
     "string.h": "c",
-    "functional": "c"
+    "functional": "c",
+    "string": "c",
+    "optional": "c",
+    "ratio": "c",
+    "system_error": "c",
+    "array": "c",
+    "tuple": "c",
+    "type_traits": "c",
+    "utility": "c",
+    "variant": "c",
+    "__bit_reference": "c",
+    "__node_handle": "c",
+    "bitset": "c",
+    "chrono": "c",
+    "deque": "c",
+    "__memory": "c",
+    "limits": "c",
+    "random": "c",
+    "vector": "c"
   }
 }

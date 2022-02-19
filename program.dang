@@ -1,0 +1,19 @@
+syscall 1 1 "Hello, World!" 13 end
+
+# var greet:str = "Hello, World!"
+# syscall 1 1 greet 13 end
+
+# I support comments now
+# var bye:int = 23 + 45 * 3 / 4
+
+# fn print:null ( var s:str )
+#   # sysprint
+# end
+
+# print <| greet
+
+# if cond1 && cond 2 then
+#   print <| greet
+# elif cond3 then
+#   exit
+# end
