@@ -70,6 +70,35 @@ void printall(str* array, size_t size)
 		printf("%s\n", array[i]);
 }
 
+void CompilerError(str message) {
+	fprintf(stderr, "\nError: %s\n", message);
+	exit(1);
+}
+
+str fstr(str ln, ...) {
+	va_list args;
+	va_start(args, ln);
+
+	uint _LINE_MAXSIZE = strlen(ln) + 128;
+	str line = malloc(_LINE_MAXSIZE * sizeof(char));
+	int flen = vsnprintf(line, _LINE_MAXSIZE * sizeof(char), ln, args);
+
+	if (flen > _LINE_MAXSIZE)
+		CompilerError("Formattted string too large.");
+
+	va_end(args);
+
+	uint _size = 0;
+	if (flen > 0)
+		_size += flen;
+	_size++;
+
+	str new = malloc(_size * sizeof(char));
+	strcpy(new, line);
+	new[_size] = '\0';
+	return new;
+}
+
 // --------------------------
 // Lexer --------------------
 
@@ -82,10 +111,7 @@ void readTargetFile(str filename, str* buffer, uint* size)
 	FILE* f_ptr = fopen(filename, "r");
 
 	if (f_ptr == NULL)
-	{
-		fprintf(stderr, "\nError: Couldn't open file \"%s\"\n", filename);
-		exit(1);
-	}
+		CompilerError(fstr("Couldn't open file \"%s\"", filename));
 
 	// Find size of file
 	fseek(f_ptr, 0L, SEEK_END);
@@ -223,6 +249,7 @@ typedef enum
 	END,
 	WHILE,
 	DO,
+	RETURN,
 	INCLUDE,
 	SYSCALL,
 	__KEYWORDS_COUNT,
@@ -313,6 +340,7 @@ typedef enum
 	KeywordToken,
 	LiteralToken,
 	DeclarationToken,
+	ProcedureToken,
 	IdentifierToken,
 	OperatorToken,
 	ExpressionStartToken,
@@ -517,6 +545,14 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 					.value = (TokenValue)(Keyword)END,
 			};
 		}
+		else if /* Syscall */ (strcmp(word, "return") == 0)
+		{
+			pushToken(&tstream, &length);
+			tstream[length - 1] = (Token){
+					.type = KeywordToken,
+					.value = (TokenValue)(Keyword)RETURN,
+			};
+		}
 		else if /* Syscall */ (strcmp(word, "syscall") == 0)
 		{
 			pushToken(&tstream, &length);
@@ -533,11 +569,9 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 
 			str arg = *lexicon;
 			uint split = strcspn(arg, ":");
+			// Type of variable not given
 			if (split == strlen(arg))
-			{ // Type of variable not given
-				fprintf(stderr, "\nError: Untyped variable \"%s\" not supported yet.\n", arg);
-				exit(1);
-			}
+				CompilerError(fstr("Untyped variable \"%s\" not supported yet.", arg));
 
 			arg[split++] = '\0';
 			str type = &arg[split];
@@ -578,39 +612,36 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 			str arg = *lexicon;
 			uint split = strcspn(arg, ":");
 			if (split == strlen(arg))
-			{ // Type of function not given
-				fprintf(stderr, "\nError: Untyped function \"%s\" not supported yet.\n", arg);
-				exit(1);
-			}
+				CompilerError(fstr("Untyped function \"%s\" not supported yet.", arg));
 
 			arg[split++] = '\0';
 			str type = &arg[split];
 
 			pushToken(&tstream, &length);
 			tstream[length - 1] = (Token){
-					.type = DeclarationToken,
+					.type = ProcedureToken,
 					.value = (TokenValue)(Function){
 							.name = arg,
 							.nargs = 0,
 							.type = 0,
 					}};
 
-			strcpy(tstream[length - 1].value.__i.name, arg);
+			strcpy(tstream[length - 1].value.__f.name, arg);
 
 			if (strcmp(type, "int") == 0)
 			{
-				tstream[length - 1].value.__i.type = IntValue;
+				tstream[length - 1].value.__f.type = IntValue;
 				tstream[length - 1].value.__i.msize = sizeof(__int64_t);
 			}
 			else if (strcmp(type, "float") == 0)
 			{
-				tstream[length - 1].value.__i.type = FloatValue;
+				tstream[length - 1].value.__f.type = FloatValue;
 				tstream[length - 1].value.__i.msize = sizeof(float);
 			}
 			else if (strcmp(type, "str") == 0)
 			{
-				tstream[length - 1].value.__i.type = StringValue;
-				tstream[length - 1].value.__i.msize = sizeof(char *);
+				tstream[length - 1].value.__f.type = StringValue;
+				tstream[length - 1].value.__i.msize = sizeof(char*);
 			}
 
 			// add n args
@@ -621,10 +652,7 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 			Token* prev = popToken(tstream, &length);
 
 			if (prev->type != DeclarationToken && prev->type != IdentifierToken)
-			{
-				fprintf(stderr, "\nError: Assigning to non-identifier\n");
-				exit(1);
-			}
+				CompilerError("Assigning to non-identifier.");
 
 			pushToken(&tstream, &length);
 			tstream[length - 1] = (Token){
@@ -711,7 +739,7 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 			for (size_t i = 0; i < length; i++)
 			{
 				if (
-						tstream[i].type == DeclarationToken &&
+						tstream[i].type == ProcedureToken &&
 						strcmp(tstream[i].value.__f.name, prev->value.__f.name) == 0)
 				{
 					found = true;
@@ -719,10 +747,7 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 			}
 
 			if (!found)
-			{
-				fprintf(stderr, "\nError: Use of un-declared function \"%s\"\n", prev->value.__f.name);
-				exit(1);
-			}
+				CompilerError(fstr("Use of un-declared function \"%s\".", prev->value.__f.name));
 
 			pushToken(&tstream, &length);
 			tstream[length - 1] = (Token){
@@ -742,7 +767,8 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 					.value = (TokenValue)(Literal){
 							.type = IntValue,
 							.msize = sizeof(int),
-							.value = (LiteralValue)(int)atoi(word)}};
+							.value = (LiteralValue)(int)atoi(word),
+					}};
 		}
 		else if /* String Literals */ (word[0] == '\"' && word[len - 1] == '\"')
 		{
@@ -801,17 +827,11 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 			}
 
 			if (!found)
-			{
-				fprintf(stderr, "\nError: Un-declared identifier \"%s\"\n", word);
-				exit(1);
-			}
+				CompilerError(fstr("Un-declared identifier \"%s\".", word));
 		}
 
 		else /* Something unrecognised was thrown own way */
-		{
-			fprintf(stderr, "\nError: Unknown word \"%s\"\n", word);
-			exit(1);
-		}
+			CompilerError(fstr("Unknown word \"%s\".", word));
 
 		// Advance to next lex
 		lexicon = &lexicon[1];
@@ -841,32 +861,6 @@ void wline(str* buf, str ln)
 	new[strlen(*buf)] = '\n';
 
 	strcpy(&new[strlen(*buf) + 1], ln);
-	new[_size] = '\0';
-	*buf = new;
-}
-
-void fstr_noappend(str* buf, str ln, ...) {
-	va_list args;
-	va_start(args, ln);
-
-	uint _LINE_MAXSIZE = strlen(ln) + 128;
-	str line = malloc(_LINE_MAXSIZE * sizeof(char));
-	int flen = vsnprintf(line, _LINE_MAXSIZE * sizeof(char), ln, args);
-
-	if (flen > _LINE_MAXSIZE) {
-		fprintf(stderr, "\nError: Formattted string too large.\n");
-		exit(1);
-	}
-
-	va_end(args);
-
-	uint _size = 0;
-	if (flen > 0)
-		_size += flen;
-	_size++;
-
-	str new = malloc(_size * sizeof(char));
-	strcpy(new, line);
 	new[_size] = '\0';
 	*buf = new;
 }
@@ -915,49 +909,81 @@ str __linux_syscall_argloc(uint narg) {
 	}
 }
 
-str resolveTokenValue(Token* token) {
-	switch (token->type)
+str resolveTokenValue(Token token) {
+	switch (token.type)
 	{
-	case IdentifierToken:
-		{
-		return "";
-		}
-
-	case LiteralToken:
-		{
-		switch (token->value.__l.type)
-		{
-		case StringValue: return token->value.__l.value.__s;
-		case IntValue: 
+		case DeclarationToken: return fstr("[%s]", token.value.__i.name);
+		case IdentifierToken: return fstr("[_var_%s]", token.value.__i.name);
+		
+		case LiteralToken: {
+			switch (token.value.__l.type)
 			{
-				str _lit_int = "";
-				fstr_noappend(&_lit_int, "%i", token->value.__l.value.__i);
-				return _lit_int;
+				case FloatValue:
+				case StringValue: 
+					return token.value.__l.value.__s;
+
+				case IntValue: return fstr("%i", token.value.__l.value.__i);
+				// case FloatValue: return fstr("%f", token->value.__l.value.__f);
+
+				default: return "";
 			}
+		}
+		
 		default: return "";
-		}
-		}
-	
-	default: return "";
 	}
 }
 
 str resolveOperator(TokenStream* stream, uint* length, uint index) {
-	str operation = "";
-	Token _op_next_arg = (*stream)[index + 1];
-	if (_op_next_arg.type == OperatorToken) {
-		wline(&operation, resolveOperator(stream, length, index + 1));
-	}
+	Token _op_arg1 = (*stream)[index + 1];
+	Token _op_arg2 = (*stream)[index + 2];
 
-	Operator op = _op_next_arg.value.__o;
+	str operation = "";
+	
+	if (_op_arg1.type == OperatorToken)
+		wline(&operation, resolveOperator(stream, length, index + 1));
+	if (_op_arg2.type == OperatorToken)
+		wline(&operation, resolveOperator(stream, length, index + 2));
+
+	Operator op = (*stream)[index].value.__o;
 	switch (op)
 	{
-	case ASSIGN:
-		/* code */
-		break;
-	
-	default:
-		break;
+		case ASSIGN: {
+			if (_op_arg1.type != IdentifierToken && _op_arg1.type != DeclarationToken)
+				CompilerError("Assigning to non-identifier");
+
+			Identifier arg1 = _op_arg1.value.__i;
+			switch (_op_arg2.type)
+			{
+				case IdentifierToken:
+					fline(&operation, ""); break;
+				case LiteralToken: {
+					Literal arg2 = _op_arg2.value.__l;
+					fline(&operation, "mov qword %s, %s ",
+						resolveTokenValue(_op_arg1),
+						resolveTokenValue(_op_arg2));
+					// else
+					// for (size_t i = 0; i < _op_arg2.value.__l.msize; i++)
+					// {
+					// 	fline(&operation, "mov %s [%s], %s ",
+					// 		"byte",
+					// 		resolveTokenValue(_op_arg1),
+					// 		resolveTokenValue(_op_arg2)
+					// 	); 
+					// }
+					break;
+				}
+				
+				default: {
+					// fprintf
+				}
+			}
+
+			rippleDeleteTokens(stream, length, index, 2);
+			break;
+		}
+		
+		default:
+			break;
 	}
 
 	return operation;
@@ -968,27 +994,19 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 	FILE* fout = fopen(outfile, "w");
 
 	if (fout == NULL)
-	{
-		fprintf(stderr, "\nError: Couldn't create asm \"%s\".\n", outfile);
-		exit(1);
-	}
+		CompilerError(fstr("Couldn't create \"%s\".", outfile));
 
 	str
+		head,
 		text = "",
 		data = "",
 		bss = "";
 
 	// Header
-	fline(&text, "BITS %d\n", 64);
-	wline(&text, "section .text");
-	wline(&text, "global _start");
-	wline(&text, "_start:");
-
-	// Footer
-	wline(&data, "section .data");
-	wline(&bss, "section .bss");
-
+	fline(&head, "BITS %d\n", 64);
+	
 	// Pre-allocate addresses for literals
+	wline(&data, "section .data");
 	uint istr = 0, iint = 0, iflt = 0;
 	for (size_t _ti = 0; _ti < length; _ti++)
 	{
@@ -999,19 +1017,69 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 		Literal* literal = &token->value.__l;
 		switch (literal->type)
 		{
-		case IntValue: break;
 		case StringValue:
-			fline(&data, "str%u: db \"%s\"", istr, literal->value.__s);
-			literal->value.__s = malloc(8 * sizeof(char));
-			sprintf(literal->value.__s, "str%u", istr);
-			istr++;
+			{
+			str str_name = fstr("str%u", istr++);
+			fline(&data, "%s: db \"%s\", 0x0", str_name, literal->value.__s);
+
+			literal->value.__s = malloc(strlen(str_name) * sizeof(char));
+			strcpy(literal->value.__s, str_name);
+			}
 			break;
+
+		case FloatValue: 
 
 		default:
 			break;
 		}
 	}
 
+	// Reserve memory for variables
+	wline(&bss, "section .bss");
+	for (size_t _ti = 0; _ti < length; _ti++)
+	{
+		Token* token = &stream[_ti];
+		if (token->type == DeclarationToken) {
+			Identifier* iden = &token->value.__i;
+
+			str ptr_name = fstr("_var_%s", iden->name);
+			fline(&bss, "%s: resb %d", ptr_name, iden->msize);
+
+			iden->name = malloc(strlen(ptr_name) * sizeof(char));
+			strcpy(iden->name, ptr_name);
+		}
+		else if (token->type == ProcedureToken) {
+			Function* function = &token->value.__f;
+			
+			str fn_name = fstr("_fn_%s", function->name);
+			str rt_name = fstr("rtn%s", fn_name);
+
+			switch (function->type)
+			{
+			case IntValue:
+				fline(&bss, "%s: resb %d", rt_name, sizeof(__int64_t));
+				break;
+			case FloatValue:
+				fline(&bss, "%s: resb %d", rt_name, sizeof(float));
+				break;
+			case StringValue:
+				fline(&bss, "%s: resb %d", rt_name, sizeof(char*));
+				break;
+			default: break;
+			}
+			
+			function->name = malloc(strlen(fn_name) * sizeof(char));
+			strcpy(function->name, fn_name);
+		}
+
+	}
+
+
+	wline(&text, "section .text");
+	// Iterate through functions
+
+	wline(&text, "global _start");
+	wline(&text, "_start:");
 	// Iterate through tokens
 	size_t return_index = -1;
 	for (size_t index = 0; index < length; index++)
@@ -1020,54 +1088,52 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 
 		switch (token->type)
 		{
-		case KeywordToken:
-			{
-				Keyword value = token->value.__k;
-				switch (value)
+			case KeywordToken:
 				{
-				case SYSCALL:
+					Keyword value = token->value.__k;
+					switch (value)
 					{
-						uint _syscall_nargs = 0;
-						while (token[_syscall_nargs + 1].value.__k != END)
-							_syscall_nargs++;
+						case SYSCALL:
+							{
+								uint _syscall_nargs = 0;
+								while (token[_syscall_nargs + 1].value.__k != END)
+									_syscall_nargs++;
 
-						for (size_t i = 0; i < _syscall_nargs; i++)
-							fline(&text, "mov %s, %s ", __linux_syscall_argloc(i), resolveTokenValue(&token[i+1]));
+								for (size_t i = 0; i < _syscall_nargs; i++)
+									fline(&text, "mov %s, %s ", __linux_syscall_argloc(i), resolveTokenValue(token[i+1]));
 
-						wline(&text, "syscall");
-						rippleDeleteTokens(&stream, &length, index, _syscall_nargs + 2);
-						return_index = index;
+								wline(&text, "syscall");
+								rippleDeleteTokens(&stream, &length, index, _syscall_nargs + 2);
+								return_index = index;
+							}
+							break;
+
+						default:
+							break;
 					}
-					break;
-
-				default:
-					break;
 				}
-			}
-			break;
+				break;
 
-		case DeclarationToken:
-			/* code */
-			break;
+			case DeclarationToken:
+				/* code */
+				break;
 
-		case LiteralToken:
-			fline(&text, "mov rax, %s", resolveTokenValue(token));
-			break;
+			case OperatorToken:
+				fline(&text, resolveOperator(&stream, &length, index));
+				break;
 
-		case OperatorToken:
-			fline(&text, resolveOperator(&stream, &length, index));
-			break;
+			case LiteralToken:
+				fline(&text, "mov rax, %s", resolveTokenValue(*token));
+				break;
 
-		case ExpressionStartToken:
-			/* code */
-			break;
 
-		case ExpressionEndToken:
-			/* code */
-			break;
+			case ExpressionStartToken:
+				/* code */
+				break;
 
-		default:
-			break;
+			case ExpressionEndToken:
+				/* code */
+				break;
 		}
 
 		if (return_index != -1) {
@@ -1077,12 +1143,15 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 	}
 
 	// return 0;
-	wline(&text, "mov rax, 60 ");
-	wline(&text, "mov rdi, 0 ");
+	wline(&text, "mov rax, 60");
+	wline(&text, "mov rdi, 0");
 	wline(&text, "syscall");
 
 	// Write all strings to file
-	fprintf(fout, "%s\n %s\n %s\n", text, data, bss);
+	fprintf(fout, "%s", head);
+	fprintf(fout, "%s\n", text);
+	fprintf(fout, "%s\n", data);
+	fprintf(fout, "%s\n", bss);
 	fclose(fout);
 }
 
@@ -1194,25 +1263,15 @@ int main(int argc, str argv[])
 		 * 5. Pop target from targets array
 		 */
 
-		str ASM = "";
-		fstr_noappend(&ASM, "%s.asm", name);
+		str ASM = fstr("%s.asm", name);
+		str OBJ = fstr("%s.o", name);
+
 		compileTarget(target, ASM, x86_64);
-		
 
-		str nasm = "";
-		fstr_noappend(&nasm, "nasm -felf64 %s", ASM);
-		system(nasm);
+		system(fstr("nasm -felf64 %s", ASM));
+		system(fstr("ld -o %s %s", name, OBJ));
 
-		str OBJ = "";
-		fstr_noappend(&OBJ, "%s.o", name);
-
-		str ld = "";
-		fstr_noappend(&ld, "ld -o %s %s", name, OBJ);
-		system(ld);
-
-		str rm = "";
-		fstr_noappend(&rm, "rm %s %s", ASM, OBJ);
-		system(rm);
+		system(fstr("rm %s %s", ASM, OBJ));
 
 		// Shift base pointer ahead
 		targets = &targets[1];

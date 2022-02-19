@@ -1,7 +1,9 @@
-syscall 1 1 "Hello, World!" 13 end
+# syscall 1 1 "Hello, World!" 13 end
 
-# var greet:str = "Hello, World!"
-# syscall 1 1 greet 13 end
+var greet:str = "Hello, World!"
+syscall 1 1 greet 13 end
+
+var bye:int = 65
 
 # I support comments now
 # var bye:int = 23 + 45 * 3 / 4
