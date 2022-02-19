@@ -9,7 +9,7 @@ typedef enum
 	true
 } bool;
 typedef unsigned int uint;
-typedef char *str;
+typedef char* str;
 
 #define LF '\n'
 #define CR '\r'
@@ -18,7 +18,7 @@ typedef char *str;
 #define COMMENT '#'
 
 // Stack of module paths being compiled
-str *__TARGETS__;
+str* __TARGETS__;
 
 bool isTargetCompiling(str module)
 {
@@ -64,7 +64,7 @@ void setTargetCompiling(str module)
 	__TARGETS__ = targets;
 }
 
-void printall(str *array, size_t size)
+void printall(str* array, size_t size)
 {
 	for (size_t i = 0; i < size; i++)
 		printf("%s\n", array[i]);
@@ -73,13 +73,13 @@ void printall(str *array, size_t size)
 // --------------------------
 // Lexer --------------------
 
-void readTargetFile(str filename, str *buffer, uint *size)
+void readTargetFile(str filename, str* buffer, uint* size)
 {
 	/**
 	 * @brief Read file into buffer as string
 	 */
 
-	FILE *f_ptr = fopen(filename, "r");
+	FILE* f_ptr = fopen(filename, "r");
 
 	if (f_ptr == NULL)
 	{
@@ -112,7 +112,7 @@ void readTargetFile(str filename, str *buffer, uint *size)
 	fclose(f_ptr);
 }
 
-void lex(const str filename, str **lexicon, uint *lexsize)
+void lex(const str filename, str** lexicon, uint* lexsize)
 {
 	/**
 	 * @brief Lex file into logical words
@@ -124,7 +124,7 @@ void lex(const str filename, str **lexicon, uint *lexsize)
 	readTargetFile(filename, &buffer, &size);
 	printf("\b\b\b, %d bytes.\n", size);
 
-	str *__lexicon;
+	str* __lexicon;
 	size_t length = 0;
 	str current = "";
 	uint __ci = 0;
@@ -282,7 +282,7 @@ typedef union
 	int __i;
 	float __f;
 	str __s;
-	void *n;
+	void* n;
 } LiteralValue;
 
 typedef struct
@@ -327,7 +327,7 @@ typedef union
 	Identifier __i;
 	Function __f;
 	Literal __l;
-	void *n;
+	void* n;
 } TokenValue;
 
 typedef struct
@@ -336,9 +336,9 @@ typedef struct
 	TokenValue value;
 } Token;
 
-typedef Token *TokenStream;
+typedef Token* TokenStream;
 
-void pushToken(TokenStream *stream, uint *len)
+void pushToken(TokenStream* stream, uint* len)
 {
 	TokenStream __new = malloc((++(*len)) * sizeof(Token));
 	if ((*len) > 1)
@@ -350,9 +350,17 @@ void pushToken(TokenStream *stream, uint *len)
 	*stream = __new;
 }
 
-Token *popToken(TokenStream stream, uint *len)
+Token* popToken(TokenStream stream, uint* len)
 {
 	return &stream[--(*len)];
+}
+
+void rippleDeleteTokens(TokenStream* stream, uint* len, uint index, uint count)
+{
+	*len -= count;
+	for (size_t i = index; i < *len; i++) {
+		memcpy(&(*stream)[i], &(*stream)[i+count], sizeof(Token));
+	}
 }
 
 bool isInteger(str word)
@@ -395,14 +403,14 @@ bool isFloat(str word)
 	return true;
 }
 
-void parse(const str filename, TokenStream *stream, uint *parselen)
+void parse(const str filename, TokenStream* stream, uint* parselen)
 {
 	/**
 	 * @brief Parse words into token stream
 	 */
 
 	uint lexsize = 0;
-	str *lexicon;
+	str* lexicon;
 	lex(filename, &lexicon, &lexsize);
 
 	// Local token stream
@@ -559,7 +567,7 @@ void parse(const str filename, TokenStream *stream, uint *parselen)
 			else if (strcmp(type, "str") == 0)
 			{
 				tstream[length - 1].value.__i.type = StringValue;
-				tstream[length - 1].value.__i.msize = sizeof(char *);
+				tstream[length - 1].value.__i.msize = sizeof(char*);
 			}
 		}
 		else if /* Function Declarations */ (strcmp(word, "fn") == 0)
@@ -610,7 +618,7 @@ void parse(const str filename, TokenStream *stream, uint *parselen)
 		// Operations -------------------------------------------------------------
 		else if /* Assignment Operation */ (strcmp(word, "=") == 0)
 		{
-			Token *prev = popToken(tstream, &length);
+			Token* prev = popToken(tstream, &length);
 
 			if (prev->type != DeclarationToken && prev->type != IdentifierToken)
 			{
@@ -629,7 +637,7 @@ void parse(const str filename, TokenStream *stream, uint *parselen)
 		}
 		else if /* Addition Operation */ (strcmp(word, "+") == 0)
 		{
-			Token *prev = popToken(tstream, &length);
+			Token* prev = popToken(tstream, &length);
 
 			pushToken(&tstream, &length);
 			tstream[length - 1] = (Token){
@@ -643,7 +651,7 @@ void parse(const str filename, TokenStream *stream, uint *parselen)
 		}
 		else if /* Subtraction Operation */ (strcmp(word, "-") == 0)
 		{
-			Token *prev = popToken(tstream, &length);
+			Token* prev = popToken(tstream, &length);
 
 			pushToken(&tstream, &length);
 			tstream[length - 1] = (Token){
@@ -657,7 +665,7 @@ void parse(const str filename, TokenStream *stream, uint *parselen)
 		}
 		else if /* Multiplication Operation */ (strcmp(word, "*") == 0)
 		{
-			Token *prev = popToken(tstream, &length);
+			Token* prev = popToken(tstream, &length);
 
 			pushToken(&tstream, &length);
 			tstream[length - 1] = (Token){
@@ -671,7 +679,7 @@ void parse(const str filename, TokenStream *stream, uint *parselen)
 		}
 		else if /* Division Operation */ (strcmp(word, "/") == 0)
 		{
-			Token *prev = popToken(tstream, &length);
+			Token* prev = popToken(tstream, &length);
 
 			pushToken(&tstream, &length);
 			tstream[length - 1] = (Token){
@@ -685,7 +693,7 @@ void parse(const str filename, TokenStream *stream, uint *parselen)
 		}
 		else if /* Logical AND Operation */ (strcmp(word, "&&") == 0)
 		{
-			Token *prev = popToken(tstream, &length);
+			Token* prev = popToken(tstream, &length);
 			// check if prev is a function identifier
 
 			pushToken(&tstream, &length);
@@ -696,7 +704,7 @@ void parse(const str filename, TokenStream *stream, uint *parselen)
 		}
 		else if /* Call Operation */ (strcmp(word, "<|") == 0)
 		{
-			Token *prev = popToken(tstream, &length);
+			Token* prev = popToken(tstream, &length);
 
 			// check if prev is a function identifier
 			bool found = false;
@@ -823,7 +831,7 @@ void parse(const str filename, TokenStream *stream, uint *parselen)
 // --------------------------
 // Targets ------------------
 
-void wline(str *buf, str ln)
+void wline(str* buf, str ln)
 {
 	uint _size = strlen(*buf) + strlen(ln);
 	_size++;
@@ -837,7 +845,7 @@ void wline(str *buf, str ln)
 	*buf = new;
 }
 
-void fstr_noappend(str *buf, str ln, ...) {
+void fstr_noappend(str* buf, str ln, ...) {
 	va_list args;
 	va_start(args, ln);
 
@@ -863,7 +871,7 @@ void fstr_noappend(str *buf, str ln, ...) {
 	*buf = new;
 }
 
-void fline(str *buf, str ln, ...) {
+void fline(str* buf, str ln, ...) {
 	va_list args;
 	va_start(args, ln);
 
@@ -907,39 +915,57 @@ str __linux_syscall_argloc(uint narg) {
 	}
 }
 
-str getTokenValue(Token* token) {
+str resolveTokenValue(Token* token) {
 	switch (token->type)
 	{
-	case KeywordToken:
-		/* code */
-		break;
+	case IdentifierToken:
+		{
+		return "";
+		}
 
 	case LiteralToken:
 		{
-			switch (token->value.__l.type)
+		switch (token->value.__l.type)
+		{
+		case StringValue: return token->value.__l.value.__s;
+		case IntValue: 
 			{
-			case StringValue: return token->value.__l.value.__s;
-			case IntValue:
-				{
-					str _lit_int = "";
-					fstr_noappend(&_lit_int, "%i", token->value.__l.value.__i);
-					return _lit_int;
-				}
-				break;
-			default:
-				break;
+				str _lit_int = "";
+				fstr_noappend(&_lit_int, "%i", token->value.__l.value.__i);
+				return _lit_int;
 			}
+		default: return "";
 		}
+		}
+	
+	default: return "";
+	}
+}
+
+str resolveOperator(TokenStream* stream, uint* length, uint index) {
+	str operation = "";
+	Token _op_next_arg = (*stream)[index + 1];
+	if (_op_next_arg.type == OperatorToken) {
+		wline(&operation, resolveOperator(stream, length, index + 1));
+	}
+
+	Operator op = _op_next_arg.value.__o;
+	switch (op)
+	{
+	case ASSIGN:
+		/* code */
 		break;
 	
 	default:
 		break;
 	}
+
+	return operation;
 }
 
-void codegen_x86_64(Token *TokenStream, uint length, str outfile)
+void codegen_x86_64(TokenStream stream, uint length, str outfile)
 {
-	FILE *fout = fopen(outfile, "w");
+	FILE* fout = fopen(outfile, "w");
 
 	if (fout == NULL)
 	{
@@ -966,11 +992,11 @@ void codegen_x86_64(Token *TokenStream, uint length, str outfile)
 	uint istr = 0, iint = 0, iflt = 0;
 	for (size_t _ti = 0; _ti < length; _ti++)
 	{
-		Token *token = &TokenStream[_ti];
+		Token* token = &stream[_ti];
 		if (token->type != LiteralToken)
 			continue;
 
-		Literal *literal = &token->value.__l;
+		Literal* literal = &token->value.__l;
 		switch (literal->type)
 		{
 		case IntValue: break;
@@ -987,47 +1013,49 @@ void codegen_x86_64(Token *TokenStream, uint length, str outfile)
 	}
 
 	// Iterate through tokens
-	for (size_t _ti = 0; _ti < length; _ti++)
+	size_t return_index = -1;
+	for (size_t index = 0; index < length; index++)
 	{
-		Token *token = &TokenStream[_ti];
+		Token *token = &stream[index];
 
 		switch (token->type)
 		{
 		case KeywordToken:
-		{
-			Keyword value = token->value.__k;
-			switch (value)
 			{
-			case SYSCALL:
-			{
-				uint _syscall_nargs = 0;
-				while (token[_syscall_nargs].value.__k != END)
-					_syscall_nargs++;
+				Keyword value = token->value.__k;
+				switch (value)
+				{
+				case SYSCALL:
+					{
+						uint _syscall_nargs = 0;
+						while (token[_syscall_nargs + 1].value.__k != END)
+							_syscall_nargs++;
 
-				for (size_t i = 0; i < _syscall_nargs - 1; i++)
-					fline(&text, "mov %s, %s ", __linux_syscall_argloc(i), getTokenValue(&token[i+1]));
+						for (size_t i = 0; i < _syscall_nargs; i++)
+							fline(&text, "mov %s, %s ", __linux_syscall_argloc(i), resolveTokenValue(&token[i+1]));
 
-				wline(&text, "syscall");
-				_ti += _syscall_nargs + 1;
+						wline(&text, "syscall");
+						rippleDeleteTokens(&stream, &length, index, _syscall_nargs + 2);
+						return_index = index;
+					}
+					break;
+
+				default:
+					break;
+				}
 			}
 			break;
-
-			default:
-				break;
-			}
-		}
-		break;
 
 		case DeclarationToken:
 			/* code */
 			break;
 
 		case LiteralToken:
-			/* code */
+			fline(&text, "mov rax, %s", resolveTokenValue(token));
 			break;
 
 		case OperatorToken:
-			/* code */
+			fline(&text, resolveOperator(&stream, &length, index));
 			break;
 
 		case ExpressionStartToken:
@@ -1040,6 +1068,11 @@ void codegen_x86_64(Token *TokenStream, uint length, str outfile)
 
 		default:
 			break;
+		}
+
+		if (return_index != -1) {
+			index = return_index - 1;
+			return_index = -1;
 		}
 	}
 
@@ -1079,7 +1112,12 @@ bool isCompilerFlag(str arg)
 		return false;
 }
 
-void compileTarget(const str filename)
+enum _ARCH_ 
+{
+	x86_64,
+};
+
+void compileTarget(const str filename, const str outfile, enum _ARCH_ arch)
 {
 	/**
 	 * @brief Generate code corresponding to stream
@@ -1095,15 +1133,15 @@ void compileTarget(const str filename)
 	setTargetCompiling(filename);
 	parse(filename, &stream, &length);
 
-	codegen_x86_64(stream, length, "out.asm");
-	// // Generate asm code
-	// while (length)
-	// {
-	// 	Token token = *stream;
-
-	// 	stream = &stream[1];
-	// 	length--;
-	// }
+	switch (arch)
+	{
+	case x86_64:
+		codegen_x86_64(stream, length, outfile);
+		break;
+	
+	default:
+		break;
+	}
 }
 
 int main(int argc, str argv[])
@@ -1137,18 +1175,15 @@ int main(int argc, str argv[])
 	__TARGETS__ = malloc(sizeof(str));
 	__TARGETS__[0] = NULL;
 
-	/**
-	 * @todo
-	 * Get cmdline args and decide what to do
-	 * compile
-	 * - open and read target file into string
-	 * - split string by keywords into tokens
-	 * - decide token struct
-	 */
-
 	while (n_targets)
 	{
 		const str target = *targets;
+
+		uint len = strcspn(target, ".");
+		char name[len];
+		for (size_t i = 0; i < len; i++)
+			name[i] = target[i];
+		name[len] = '\0';
 
 		/**
 		 * @brief Compilation
@@ -1159,7 +1194,25 @@ int main(int argc, str argv[])
 		 * 5. Pop target from targets array
 		 */
 
-		compileTarget(target);
+		str ASM = "";
+		fstr_noappend(&ASM, "%s.asm", name);
+		compileTarget(target, ASM, x86_64);
+		
+
+		str nasm = "";
+		fstr_noappend(&nasm, "nasm -felf64 %s", ASM);
+		system(nasm);
+
+		str OBJ = "";
+		fstr_noappend(&OBJ, "%s.o", name);
+
+		str ld = "";
+		fstr_noappend(&ld, "ld -o %s %s", name, OBJ);
+		system(ld);
+
+		str rm = "";
+		fstr_noappend(&rm, "rm %s %s", ASM, OBJ);
+		system(rm);
 
 		// Shift base pointer ahead
 		targets = &targets[1];

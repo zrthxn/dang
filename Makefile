@@ -9,7 +9,7 @@ build:
 	$(COMPILER) $(CFLAGS) dang.c -o dang
 
 compiler: build
-	./dang dang.dang
+	./dang program.dang
 
 bootstrap: build
 	@cp dang boot/
