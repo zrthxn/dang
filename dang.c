@@ -88,14 +88,12 @@ str fstr(str ln, ...) {
 
 	va_end(args);
 
-	uint _size = 0;
-	if (flen > 0)
-		_size += flen;
-	_size++;
+	str new;
+	if (flen > 0) {
+		new = malloc(flen * sizeof(char));
+		strcpy(new, line);
+	}
 
-	str new = malloc(_size * sizeof(char));
-	strcpy(new, line);
-	new[_size] = '\0';
 	return new;
 }
 
@@ -339,6 +337,7 @@ typedef enum
 	_T = __VALUETYPES_COUNT,
 	KeywordToken,
 	LiteralToken,
+	MemoryToken,
 	DeclarationToken,
 	ProcedureToken,
 	IdentifierToken,
@@ -355,6 +354,7 @@ typedef union
 	Identifier __i;
 	Function __f;
 	Literal __l;
+	str m;
 	void* n;
 } TokenValue;
 
@@ -385,10 +385,13 @@ Token* popToken(TokenStream stream, uint* len)
 
 void rippleDeleteTokens(TokenStream* stream, uint* len, uint index, uint count)
 {
-	*len -= count;
 	for (size_t i = index; i < *len; i++) {
-		memcpy(&(*stream)[i], &(*stream)[i+count], sizeof(Token));
+		if (i+count < *len)
+			memcpy(&((*stream)[i]), &((*stream)[i+count]), sizeof(Token));
+		else
+			(*stream)[i] = (Token){};
 	}
+	*len -= count;
 }
 
 bool isInteger(str word)
@@ -873,10 +876,8 @@ void fline(str* buf, str ln, ...) {
 	str line = malloc(_LINE_MAXSIZE * sizeof(char));
 	int flen = vsnprintf(line, _LINE_MAXSIZE * sizeof(char), ln, args);
 
-	if (flen > _LINE_MAXSIZE) {
-		fprintf(stderr, "\nError: Formattted string too large.\n");
-		exit(1);
-	}
+	if (flen > _LINE_MAXSIZE)
+		CompilerError("Formattted string too large.");
 
 	va_end(args);
 
@@ -909,21 +910,23 @@ str __linux_syscall_argloc(uint narg) {
 	}
 }
 
-str resolveTokenValue(Token token) {
+str _val_(Token token) {
 	switch (token.type)
 	{
 		case DeclarationToken: return fstr("[%s]", token.value.__i.name);
 		case IdentifierToken: return fstr("[_var_%s]", token.value.__i.name);
+		
+		case MemoryToken: return token.value.m;
 		
 		case LiteralToken: {
 			switch (token.value.__l.type)
 			{
 				case FloatValue:
 				case StringValue: 
-					return token.value.__l.value.__s;
-
-				case IntValue: return fstr("%i", token.value.__l.value.__i);
-				// case FloatValue: return fstr("%f", token->value.__l.value.__f);
+					return fstr("[%s]", token.value.__l.value.__s);
+				
+				case IntValue:
+					return fstr("%d", token.value.__l.value.__i);
 
 				default: return "";
 			}
@@ -933,60 +936,127 @@ str resolveTokenValue(Token token) {
 	}
 }
 
-str resolveOperator(TokenStream* stream, uint* length, uint index) {
+str _addr_(Token token) {
+	switch (token.type)
+	{
+		case DeclarationToken: return fstr("%s", token.value.__i.name);
+		case IdentifierToken: return fstr("_var_%s", token.value.__i.name);
+		
+		case MemoryToken: return token.value.m;
+		
+		case LiteralToken: {
+			switch (token.value.__l.type)
+			{
+				case FloatValue:
+				case StringValue: 
+					return token.value.__l.value.__s;
+
+				case IntValue:
+					return fstr("%d", token.value.__l.value.__i);
+
+				default: return "";
+			}
+		}
+		
+		default: return "";
+	}
+}
+
+str resolveOperator(TokenStream* stream, uint* length, uint index, size_t* return_index) 
+{
+	Operator op = (*stream)[index].value.__o;
+	str ops = "";
+
+	if ((*stream)[index + 1].type == OperatorToken)
+		wline(&ops, resolveOperator(stream, length, index + 1, return_index));
+
+	if ((*stream)[index + 2].type == OperatorToken)
+		wline(&ops, resolveOperator(stream, length, index + 2, return_index));
+
 	Token _op_arg1 = (*stream)[index + 1];
 	Token _op_arg2 = (*stream)[index + 2];
 
-	str operation = "";
+	// printf("\n%d", index);
+	// printf("\n");
+	// for (size_t i = 0; i < (*length); i++)
+	// {
+	// 	printf("\tT%d", (*stream)[i].type);
+	// }
 	
-	if (_op_arg1.type == OperatorToken)
-		wline(&operation, resolveOperator(stream, length, index + 1));
-	if (_op_arg2.type == OperatorToken)
-		wline(&operation, resolveOperator(stream, length, index + 2));
-
-	Operator op = (*stream)[index].value.__o;
 	switch (op)
 	{
 		case ASSIGN: {
 			if (_op_arg1.type != IdentifierToken && _op_arg1.type != DeclarationToken)
 				CompilerError("Assigning to non-identifier");
-
-			Identifier arg1 = _op_arg1.value.__i;
+			
+			str opsize = "qword";
+			Identifier dest = _op_arg1.value.__i;
 			switch (_op_arg2.type)
 			{
 				case IdentifierToken:
-					fline(&operation, ""); break;
-				case LiteralToken: {
-					Literal arg2 = _op_arg2.value.__l;
-					fline(&operation, "mov qword %s, %s ",
-						resolveTokenValue(_op_arg1),
-						resolveTokenValue(_op_arg2));
-					// else
-					// for (size_t i = 0; i < _op_arg2.value.__l.msize; i++)
-					// {
-					// 	fline(&operation, "mov %s [%s], %s ",
-					// 		"byte",
-					// 		resolveTokenValue(_op_arg1),
-					// 		resolveTokenValue(_op_arg2)
-					// 	); 
-					// }
+				case LiteralToken:
+					fline(&ops, "mov %s [%s], %s", opsize, dest.name, _addr_(_op_arg2));
 					break;
-				}
+
+				case MemoryToken:
+					fline(&ops, "mov [%s], %s", dest.name, _addr_(_op_arg2));
+					break;
 				
-				default: {
-					// fprintf
-				}
+				default: 
+					CompilerError("Assignment should be from literal or variable.");
+			}
+			rippleDeleteTokens(stream, length, index, 3);
+			*return_index = index;
+			break;
 			}
 
-			rippleDeleteTokens(stream, length, index, 2);
+		case ADD: {
+			if (_op_arg1.type != IdentifierToken && _op_arg1.type != LiteralToken && _op_arg1.type != MemoryToken)
+				CompilerError("Illegal operation, first operand.");
+			if (_op_arg2.type != IdentifierToken && _op_arg2.type != LiteralToken && _op_arg2.type != MemoryToken)
+				CompilerError("Illegal operation, second operand.");
+
+			fline(&ops, "mov rax, %s", _val_(_op_arg1));
+			fline(&ops, "add rax, %s", _val_(_op_arg2));
+			wline(&ops, "mov rdx, rax");
+
+			rippleDeleteTokens(stream, length, index + 1, 2);
+			*return_index = index;
+
+			(*stream)[index].value.m = fstr("rdx");
+			(*stream)[index] = (Token){
+				.type = MemoryToken,
+				.value = (TokenValue)(str)"rdx"
+			};
 			break;
-		}
+			}
+
+		case SUB: {
+			if (_op_arg1.type != IdentifierToken && _op_arg1.type != LiteralToken && _op_arg1.type != MemoryToken)
+				CompilerError("Illegal operation, first operand.");
+			if (_op_arg2.type != IdentifierToken && _op_arg2.type != LiteralToken && _op_arg2.type != MemoryToken)
+				CompilerError("Illegal operation, second operand.");
+
+			fline(&ops, "mov rax, %s", _val_(_op_arg1));
+			fline(&ops, "sub rax, %s", _val_(_op_arg2));
+			wline(&ops, "mov rdx, rax");
+
+			rippleDeleteTokens(stream, length, index + 1, 2);
+			*return_index = index;
+
+			(*stream)[index].value.m = fstr("rdx");
+			(*stream)[index] = (Token){
+				.type = MemoryToken,
+				.value = (TokenValue)(str)"rdx"
+			};
+			break;
+			}
 		
 		default:
 			break;
 	}
 
-	return operation;
+	return ops;
 }
 
 void codegen_x86_64(TokenStream stream, uint length, str outfile)
@@ -1007,7 +1077,7 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 	
 	// Pre-allocate addresses for literals
 	wline(&data, "section .data");
-	uint istr = 0, iint = 0, iflt = 0;
+	uint istr = 0, iflt = 0;
 	for (size_t _ti = 0; _ti < length; _ti++)
 	{
 		Token* token = &stream[_ti];
@@ -1017,20 +1087,19 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 		Literal* literal = &token->value.__l;
 		switch (literal->type)
 		{
-		case StringValue:
-			{
-			str str_name = fstr("str%u", istr++);
-			fline(&data, "%s: db \"%s\", 0x0", str_name, literal->value.__s);
+			case StringValue: {
+				str str_name = fstr("str%u", istr++);
+				fline(&data, "%s: db \"%s\", 0x00", str_name, literal->value.__s);
 
-			literal->value.__s = malloc(strlen(str_name) * sizeof(char));
-			strcpy(literal->value.__s, str_name);
-			}
-			break;
+				literal->value.__s = malloc(strlen(str_name) * sizeof(char));
+				strcpy(literal->value.__s, str_name);
+				break;
+				}
 
-		case FloatValue: 
+			case FloatValue: 
 
-		default:
-			break;
+			default:
+				break;
 		}
 	}
 
@@ -1074,43 +1143,40 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 
 	}
 
-
-	wline(&text, "section .text");
 	// Iterate through functions
-
+	wline(&text, "section .text");
 	wline(&text, "global _start");
 	wline(&text, "_start:");
+
 	// Iterate through tokens
 	size_t return_index = -1;
 	for (size_t index = 0; index < length; index++)
 	{
-		Token *token = &stream[index];
+		Token *token = &(stream[index]);
 
 		switch (token->type)
 		{
-			case KeywordToken:
+			case KeywordToken: {
+				Keyword value = token->value.__k;
+				switch (value)
 				{
-					Keyword value = token->value.__k;
-					switch (value)
-					{
-						case SYSCALL:
-							{
-								uint _syscall_nargs = 0;
-								while (token[_syscall_nargs + 1].value.__k != END)
-									_syscall_nargs++;
+					case SYSCALL: {
+						uint _syscall_nargs = 0;
+						while (token[_syscall_nargs + 1].value.__k != END)
+							_syscall_nargs++;
 
-								for (size_t i = 0; i < _syscall_nargs; i++)
-									fline(&text, "mov %s, %s ", __linux_syscall_argloc(i), resolveTokenValue(token[i+1]));
+						for (size_t i = 0; i < _syscall_nargs; i++)
+							fline(&text, "mov %s, %s", __linux_syscall_argloc(i), _val_(token[i+1]));
 
-								wline(&text, "syscall");
-								rippleDeleteTokens(&stream, &length, index, _syscall_nargs + 2);
-								return_index = index;
-							}
-							break;
+						wline(&text, "syscall");
+						rippleDeleteTokens(&stream, &length, index, _syscall_nargs + 2);
+						return_index = index;
+						}
+						break;
 
-						default:
-							break;
-					}
+					default:
+						break;
+				}
 				}
 				break;
 
@@ -1119,11 +1185,11 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 				break;
 
 			case OperatorToken:
-				fline(&text, resolveOperator(&stream, &length, index));
+				fline(&text, resolveOperator(&stream, &length, index, &return_index));
 				break;
 
 			case LiteralToken:
-				fline(&text, "mov rax, %s", resolveTokenValue(*token));
+				fline(&text, "mov rax, %s", _val_(*token));
 				break;
 
 
@@ -1143,15 +1209,16 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 	}
 
 	// return 0;
-	wline(&text, "mov rax, 60");
-	wline(&text, "mov rdi, 0");
-	wline(&text, "syscall");
+	// wline(&text, "mov rax, 60");
+	// wline(&text, "mov rdi, 0");
+	// wline(&text, "syscall");
 
 	// Write all strings to file
 	fprintf(fout, "%s", head);
-	fprintf(fout, "%s\n", text);
 	fprintf(fout, "%s\n", data);
 	fprintf(fout, "%s\n", bss);
+	fprintf(fout, "%s\n", text);
+
 	fclose(fout);
 }
 
@@ -1271,7 +1338,7 @@ int main(int argc, str argv[])
 		system(fstr("nasm -felf64 %s", ASM));
 		system(fstr("ld -o %s %s", name, OBJ));
 
-		system(fstr("rm %s %s", ASM, OBJ));
+		// system(fstr("rm %s %s", ASM, OBJ));
 
 		// Shift base pointer ahead
 		targets = &targets[1];

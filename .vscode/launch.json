@@ -11,7 +11,7 @@
       "program": "${workspaceFolder}/dang",
       "args": [
         "./dang",
-        "dang.dang"
+        "program.dang"
       ],
       "cwd": "${workspaceFolder}"
     }
