@@ -1019,15 +1019,12 @@ str resolveOperator(TokenStream* stream, uint* length, uint index, size_t* retur
 			fline(&ops, "mov rax, %s", _val_(_op_arg1));
 			fline(&ops, "add rax, %s", _val_(_op_arg2));
 			wline(&ops, "mov rdx, rax");
+			
+			(*stream)[index].type = MemoryToken;
+			(*stream)[index].value.m = fstr("rdx");
 
 			rippleDeleteTokens(stream, length, index + 1, 2);
 			*return_index = index;
-
-			(*stream)[index].value.m = fstr("rdx");
-			(*stream)[index] = (Token){
-				.type = MemoryToken,
-				.value = (TokenValue)(str)"rdx"
-			};
 			break;
 			}
 
@@ -1041,14 +1038,11 @@ str resolveOperator(TokenStream* stream, uint* length, uint index, size_t* retur
 			fline(&ops, "sub rax, %s", _val_(_op_arg2));
 			wline(&ops, "mov rdx, rax");
 
+			(*stream)[index].type = MemoryToken;
+			(*stream)[index].value.m = fstr("rdx");
+
 			rippleDeleteTokens(stream, length, index + 1, 2);
 			*return_index = index;
-
-			(*stream)[index].value.m = fstr("rdx");
-			(*stream)[index] = (Token){
-				.type = MemoryToken,
-				.value = (TokenValue)(str)"rdx"
-			};
 			break;
 			}
 		
@@ -1057,6 +1051,12 @@ str resolveOperator(TokenStream* stream, uint* length, uint index, size_t* retur
 	}
 
 	return ops;
+}
+
+void clean_codegen(str* code) {
+	for (size_t i = 0; i < strlen((*code)); i++)
+		if (isalnum((*code)[i]) == 0 && ispunct((*code)[i]) == 0 && isspace((*code)[i]) == 0)
+			(*code)[i] = ' ';
 }
 
 void codegen_x86_64(TokenStream stream, uint length, str outfile)
@@ -1212,6 +1212,13 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 	// wline(&text, "mov rax, 60");
 	// wline(&text, "mov rdi, 0");
 	// wline(&text, "syscall");
+
+	// Temporary clean to handle string corruption
+	// @todo find why this is happening
+	clean_codegen(&head);
+	clean_codegen(&data);
+	clean_codegen(&text);
+	clean_codegen(&bss);
 
 	// Write all strings to file
 	fprintf(fout, "%s", head);
