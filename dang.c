@@ -857,6 +857,19 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 void wline(str* buf, str ln)
 {
 	uint _size = strlen(*buf) + strlen(ln);
+		
+  // if (_flen <= 0)
+  //   return;
+  
+	// str new = malloc((_size + _flen) * sizeof(char));
+  // strcpy(new, *buf);
+  // if (_size > 0)
+  //   new[_size++] = '\n';
+    
+  // strcpy(&new[_size], ln);
+	// new[_size + _flen] = '\0';
+	// *buf = new;
+
 	_size++;
 
 	str new = malloc(_size * sizeof(char));
@@ -882,16 +895,17 @@ void fline(str* buf, str ln, ...) {
 	va_end(args);
 
 	uint _size = strlen(*buf);
-	if (flen > 0)
-		_size += flen;
-	_size++;
-
-	str new = malloc(_size * sizeof(char));
-	strcpy(new, *buf);
-	new[strlen(*buf)] = '\n';
-
-	strcpy(&new[strlen(*buf) + 1], line);
-	new[_size] = '\0';
+	
+  if (flen <= 0)
+    return;
+  
+	str new = malloc((_size + flen) * sizeof(char));
+  strcpy(new, *buf);
+  if (_size > 0)
+    new[_size++] = '\n';
+    
+  strcpy(&new[_size], line);
+	new[_size + flen] = '\0';
 	*buf = new;
 }
 
@@ -1080,7 +1094,7 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 	uint istr = 0, iflt = 0;
 	for (size_t _ti = 0; _ti < length; _ti++)
 	{
-		Token* token = &stream[_ti];
+		Token* token = &(stream[_ti]);
 		if (token->type != LiteralToken)
 			continue;
 
@@ -1107,7 +1121,7 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 	wline(&bss, "section .bss");
 	for (size_t _ti = 0; _ti < length; _ti++)
 	{
-		Token* token = &stream[_ti];
+		Token* token = &(stream[_ti]);
 		if (token->type == DeclarationToken) {
 			Identifier* iden = &token->value.__i;
 
@@ -1215,10 +1229,10 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 
 	// Temporary clean to handle string corruption
 	// @todo find why this is happening
-	clean_codegen(&head);
-	clean_codegen(&data);
-	clean_codegen(&text);
-	clean_codegen(&bss);
+	// clean_codegen(&head);
+	// clean_codegen(&data);
+	// clean_codegen(&text);
+	// clean_codegen(&bss);
 
 	// Write all strings to file
 	fprintf(fout, "%s", head);

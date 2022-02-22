@@ -1,10 +1,10 @@
 syscall 1 1 "Hello, World!" 13 end
 
 var greet:str = "Hello, World!"
-var greet2:str = greet
 syscall 1 1 greet 13 end
 
-var byecode:int = 60 - 35 + 5
+# var greet2:str = greet
+var byecode:int = 60 - 25 + 35
 
 syscall 60 byecode end
 
@@ -12,7 +12,7 @@ syscall 60 byecode end
 # var bye:int = 23 + 45 * 3 / 4
 
 # fn print:null ( var s:str )
-#   # sysprint
+#   syscall 1 1 s strlen <| s end
 # end
 
 # print <| greet
