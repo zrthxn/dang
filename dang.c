@@ -362,6 +362,9 @@ typedef struct
 {
 	TokenType type;
 	TokenValue value;
+
+	Token* next;
+	Token* prev;
 } Token;
 
 typedef Token* TokenStream;
@@ -434,6 +437,31 @@ bool isFloat(str word)
 	return true;
 }
 
+void pushBack(Token* stream, Token* tail) {
+	stream->next = tail;
+	tail->prev = stream;
+	tail->next = NULL;
+	stream = tail;
+}
+
+ValueType parseStringType(str type) {
+	if (strcmp(type, "int") == 0)
+		return IntValue;
+	if (strcmp(type, "float") == 0)
+		return FloatValue;
+	if (strcmp(type, "str") == 0)
+		return StringValue;
+}
+
+uint parseTypeSize(str type) {
+	if (strcmp(type, "int") == 0)
+		return sizeof(__int64_t);
+	if (strcmp(type, "float") == 0)
+		return sizeof(float);
+	if (strcmp(type, "str") == 0)
+		return sizeof(char*);
+}
+
 void parse(const str filename, TokenStream* stream, uint* parselen)
 {
 	/**
@@ -446,6 +474,16 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 
 	// Local token stream
 	TokenStream tstream;
+	
+	Token* _stream_head;
+	Token* _stream_tail;
+
+	_stream_head->next = NULL;
+	_stream_head->prev = NULL;
+
+	// _stream_tail->prev = _stream_head;
+	// _stream_tail->next = NULL;
+
 	// Length of token stream
 	uint length = 0;
 
@@ -494,75 +532,132 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 		}
 		else if /* End */ (strcmp(word, "while") == 0)
 		{
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = KeywordToken,
-					.value = (TokenValue)(Keyword)WHILE,
-			};
+			Token* tail = malloc(sizeof(Token));
+			tail->type = KeywordToken;
+			tail->value = (TokenValue)(Keyword)WHILE;
+		
+			// _stream_head->next = tail;
+			// tail->prev = _stream_head;
+			// tail->next = NULL;
+			pushBack(_stream_head, tail);
+
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = KeywordToken,
+			// 		.value = (TokenValue)(Keyword)WHILE,
+			// };
 		}
 		else if /* End */ (strcmp(word, "if") == 0)
 		{
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = KeywordToken,
-					.value = (TokenValue)(Keyword)IF,
-			};
+			Token* tail = malloc(sizeof(Token));
+			tail->type = KeywordToken;
+			tail->value = (TokenValue)(Keyword)IF;
+
+			pushBack(_stream_head, tail);
+
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = KeywordToken,
+			// 		.value = (TokenValue)(Keyword)IF,
+			// };
 		}
 		else if /* End */ (strcmp(word, "then") == 0)
 		{
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = KeywordToken,
-					.value = (TokenValue)(Keyword)THEN,
-			};
+			Token* tail = malloc(sizeof(Token));
+			tail->type = KeywordToken;
+			tail->value = (TokenValue)(Keyword)THEN;
+
+			pushBack(_stream_head, tail);
+
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = KeywordToken,
+			// 		.value = (TokenValue)(Keyword)THEN,
+			// };
 		}
 		else if /* End */ (strcmp(word, "elif") == 0)
 		{
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = KeywordToken,
-					.value = (TokenValue)(Keyword)ELIF,
-			};
+			Token* tail = malloc(sizeof(Token));
+			tail->type = KeywordToken;
+			tail->value = (TokenValue)(Keyword)ELIF;
+
+			pushBack(_stream_head, tail);
+
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = KeywordToken,
+			// 		.value = (TokenValue)(Keyword)ELIF,
+			// };
 		}
 		else if /* Else */ (strcmp(word, "else") == 0)
 		{
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = KeywordToken,
-					.value = (TokenValue)(Keyword)ELSE,
-			};
+			Token* tail = malloc(sizeof(Token));
+			tail->type = KeywordToken;
+			tail->value = (TokenValue)(Keyword)ELSE;
+
+			pushBack(_stream_head, tail);
+
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = KeywordToken,
+			// 		.value = (TokenValue)(Keyword)ELSE,
+			// };
 		}
 		else if /* Do */ (strcmp(word, "do") == 0)
 		{
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = KeywordToken,
-					.value = (TokenValue)(Keyword)DO,
-			};
+			Token* tail = malloc(sizeof(Token));
+			tail->type = KeywordToken;
+			tail->value = (TokenValue)(Keyword)DO;
+
+			pushBack(_stream_head, tail);
+
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = KeywordToken,
+			// 		.value = (TokenValue)(Keyword)DO,
+			// };
 		}
 		else if /* End */ (strcmp(word, "end") == 0)
 		{
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = KeywordToken,
-					.value = (TokenValue)(Keyword)END,
-			};
+			Token* tail = malloc(sizeof(Token));
+			tail->type = KeywordToken;
+			tail->value = (TokenValue)(Keyword)END;
+
+			pushBack(_stream_head, tail);
+
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = KeywordToken,
+			// 		.value = (TokenValue)(Keyword)END,
+			// };
 		}
 		else if /* Syscall */ (strcmp(word, "return") == 0)
 		{
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = KeywordToken,
-					.value = (TokenValue)(Keyword)RETURN,
-			};
+			Token* tail = malloc(sizeof(Token));
+			tail->type = KeywordToken;
+			tail->value = (TokenValue)(Keyword)RETURN;
+
+			pushBack(_stream_head, tail);
+
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = KeywordToken,
+			// 		.value = (TokenValue)(Keyword)RETURN,
+			// };
 		}
 		else if /* Syscall */ (strcmp(word, "syscall") == 0)
 		{
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = KeywordToken,
-					.value = (TokenValue)(Keyword)SYSCALL,
-			};
+			Token* tail = malloc(sizeof(Token));
+			tail->type = KeywordToken;
+			tail->value = (TokenValue)(Keyword)SYSCALL;
+
+			pushBack(_stream_head, tail);
+
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = KeywordToken,
+			// 		.value = (TokenValue)(Keyword)SYSCALL,
+			// };
 		}
 		// Declarations -----------------------------------------------------------
 		else if /* Variable declaration */ (strcmp(word, "var") == 0)
@@ -572,40 +667,47 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 
 			str arg = *lexicon;
 			uint split = strcspn(arg, ":");
-			// Type of variable not given
 			if (split == strlen(arg))
 				CompilerError(fstr("Untyped variable \"%s\" not supported yet.", arg));
 
 			arg[split++] = '\0';
 			str type = &arg[split];
 
-			pushToken(&tstream, &length);
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = DeclarationToken,
+			// 		.value = (TokenValue)(Identifier){
+			// 				.name = arg,
+			// 				.msize = 0,
+			// 				.type = 0,
+			// 		}};
 
-			tstream[length - 1] = (Token){
-					.type = DeclarationToken,
-					.value = (TokenValue)(Identifier){
-							.name = arg,
-							.msize = 0,
-							.type = 0,
-					}};
+			Token* tail = malloc(sizeof(Token));
+			tail->type = DeclarationToken;
+			tail->value = (TokenValue)(Identifier){
+				.name = fstr(arg),
+				.msize = parseTypeSize(type),
+				.type = parseStringType(type),
+			};
 
-			strcpy(tstream[length - 1].value.__i.name, arg);
+			pushBack(_stream_head, tail);
 
-			if (strcmp(type, "int") == 0)
-			{
-				tstream[length - 1].value.__i.type = IntValue;
-				tstream[length - 1].value.__i.msize = sizeof(__int64_t);
-			}
-			else if (strcmp(type, "float") == 0)
-			{
-				tstream[length - 1].value.__i.type = FloatValue;
-				tstream[length - 1].value.__i.msize = sizeof(float);
-			}
-			else if (strcmp(type, "str") == 0)
-			{
-				tstream[length - 1].value.__i.type = StringValue;
-				tstream[length - 1].value.__i.msize = sizeof(char*);
-			}
+			// strcpy(tail->value.__i.name, arg);
+			// if (strcmp(type, "int") == 0)
+			// {
+			// 	tstream[length - 1].value.__i.type = IntValue;
+			// 	tstream[length - 1].value.__i.msize = sizeof(__int64_t);
+			// }
+			// else if (strcmp(type, "float") == 0)
+			// {
+			// 	tstream[length - 1].value.__i.type = FloatValue;
+			// 	tstream[length - 1].value.__i.msize = sizeof(float);
+			// }
+			// else if (strcmp(type, "str") == 0)
+			// {
+			// 	tstream[length - 1].value.__i.type = StringValue;
+			// 	tstream[length - 1].value.__i.msize = sizeof(char*);
+			// }
 		}
 		else if /* Function Declarations */ (strcmp(word, "fn") == 0)
 		{
@@ -620,137 +722,218 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 			arg[split++] = '\0';
 			str type = &arg[split];
 
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = ProcedureToken,
-					.value = (TokenValue)(Function){
-							.name = arg,
-							.nargs = 0,
-							.type = 0,
-					}};
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = ProcedureToken,
+			// 		.value = (TokenValue)(Function){
+			// 				.name = arg,
+			// 				.nargs = parseStringType(type),
+			// 				.type = parseTypeSize(type),
+			// 		}};
 
-			strcpy(tstream[length - 1].value.__f.name, arg);
+			Token* tail = malloc(sizeof(Token));
+			tail->type = ProcedureToken;
+			tail->value = (TokenValue)(Function){
+				.name = fstr(arg),
+				.type = parseStringType(type),
+				.nargs = 0,
+			};
 
-			if (strcmp(type, "int") == 0)
-			{
-				tstream[length - 1].value.__f.type = IntValue;
-				tstream[length - 1].value.__i.msize = sizeof(__int64_t);
-			}
-			else if (strcmp(type, "float") == 0)
-			{
-				tstream[length - 1].value.__f.type = FloatValue;
-				tstream[length - 1].value.__i.msize = sizeof(float);
-			}
-			else if (strcmp(type, "str") == 0)
-			{
-				tstream[length - 1].value.__f.type = StringValue;
-				tstream[length - 1].value.__i.msize = sizeof(char*);
-			}
+			pushBack(_stream_head, tail);
+
+			// strcpy(tail->value.__i.name, arg);
+			// strcpy(tstream[length - 1].value.__f.name, arg);
+
+			// if (strcmp(type, "int") == 0)
+			// {
+			// 	tstream[length - 1].value.__f.type = IntValue;
+			// 	tstream[length - 1].value.__i.msize = sizeof(__int64_t);
+			// }
+			// else if (strcmp(type, "float") == 0)
+			// {
+			// 	tstream[length - 1].value.__f.type = FloatValue;
+			// 	tstream[length - 1].value.__i.msize = sizeof(float);
+			// }
+			// else if (strcmp(type, "str") == 0)
+			// {
+			// 	tstream[length - 1].value.__f.type = StringValue;
+			// 	tstream[length - 1].value.__i.msize = sizeof(char*);
+			// }
 
 			// add n args
 		}
 		// Operations -------------------------------------------------------------
 		else if /* Assignment Operation */ (strcmp(word, "=") == 0)
 		{
-			Token* prev = popToken(tstream, &length);
+			// Token* prev = popToken(tstream, &length);
+			Token* prev = _stream_head->prev;
 
 			if (prev->type != DeclarationToken && prev->type != IdentifierToken)
 				CompilerError("Assigning to non-identifier.");
 
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = OperatorToken,
-					.value = (TokenValue)(Operator)ASSIGN,
-			};
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = OperatorToken,
+			// 		.value = (TokenValue)(Operator)ASSIGN,
+			// };
 
-			pushToken(&tstream, &length);
-			memcpy(&tstream[length - 1], prev, sizeof(Token));
+			// pushToken(&tstream, &length);
+			// memcpy(&tstream[length - 1], prev, sizeof(Token));
+
+			Token* tail = malloc(sizeof(Token));
+			tail->type = OperatorToken;
+			tail->value = (TokenValue)(Operator)ASSIGN;
+			
+			prev->next = tail;
+			tail->next = prev;
+			_stream_head->next = NULL;
+			_stream_head = tail;
 		}
 		else if /* Addition Operation */ (strcmp(word, "+") == 0)
 		{
-			Token* prev = popToken(tstream, &length);
+			// Token* prev = popToken(tstream, &length);
+			Token* prev = _stream_head->prev;
 
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = OperatorToken,
-					.value = (TokenValue)(Operator)ADD,
-			};
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = OperatorToken,
+			// 		.value = (TokenValue)(Operator)ADD,
+			// };
 
-			pushToken(&tstream, &length);
-			memcpy(&tstream[length - 1], prev, sizeof(Token));
+			// pushToken(&tstream, &length);
+			// memcpy(&tstream[length - 1], prev, sizeof(Token));
 			// tstream[length-1] = *prev;
+
+			Token* tail = malloc(sizeof(Token));
+			tail->type = OperatorToken;
+			tail->value = (TokenValue)(Operator)ADD;
+			
+			prev->next = tail;
+			tail->next = prev;
+			_stream_head->next = NULL;
+			_stream_head = tail;
 		}
 		else if /* Subtraction Operation */ (strcmp(word, "-") == 0)
 		{
-			Token* prev = popToken(tstream, &length);
+			// Token* prev = popToken(tstream, &length);
+			Token* prev = _stream_head->prev;
 
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = OperatorToken,
-					.value = (TokenValue)(Operator)SUB,
-			};
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = OperatorToken,
+			// 		.value = (TokenValue)(Operator)SUB,
+			// };
 
-			pushToken(&tstream, &length);
-			memcpy(&tstream[length - 1], prev, sizeof(Token));
-			// tstream[length-1] = *prev;
+			// pushToken(&tstream, &length);
+			// memcpy(&tstream[length - 1], prev, sizeof(Token));
+			// // tstream[length-1] = *prev;
+
+			Token* tail = malloc(sizeof(Token));
+			tail->type = OperatorToken;
+			tail->value = (TokenValue)(Operator)ASSIGN;
+			
+			prev->next = tail;
+			tail->next = prev;
+			_stream_head->next = NULL;
+			_stream_head = tail;
 		}
 		else if /* Multiplication Operation */ (strcmp(word, "*") == 0)
 		{
-			Token* prev = popToken(tstream, &length);
+			// Token* prev = popToken(tstream, &length);
 
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = OperatorToken,
-					.value = (TokenValue)(Operator)MUL,
-			};
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = OperatorToken,
+			// 		.value = (TokenValue)(Operator)MUL,
+			// };
 
-			pushToken(&tstream, &length);
-			memcpy(&tstream[length - 1], prev, sizeof(Token));
-			// tstream[length-1] = *prev;
+			// pushToken(&tstream, &length);
+			// memcpy(&tstream[length - 1], prev, sizeof(Token));
+			// // tstream[length-1] = *prev;
+
+			Token* tail = malloc(sizeof(Token));
+			tail->type = OperatorToken;
+			tail->value = (TokenValue)(Operator)MUL;
+			
+			Token* prev = _stream_head->prev;
+			prev->next = tail;
+			tail->next = prev;
+			_stream_head->next = NULL;
+			_stream_head = tail;
 		}
 		else if /* Division Operation */ (strcmp(word, "/") == 0)
 		{
-			Token* prev = popToken(tstream, &length);
+			Token* tail = malloc(sizeof(Token));
+			tail->type = OperatorToken;
+			tail->value = (TokenValue)(Operator)DIV;
+			
+			Token* prev = _stream_head->prev;
+			prev->next = tail;
+			tail->next = prev;
+			_stream_head->next = NULL;
+			_stream_head = tail;
 
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = OperatorToken,
-					.value = (TokenValue)(Operator)DIV,
-			};
+			// Token* prev = popToken(tstream, &length);
 
-			pushToken(&tstream, &length);
-			memcpy(&tstream[length - 1], prev, sizeof(Token));
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = OperatorToken,
+			// 		.value = (TokenValue)(Operator)DIV,
+			// };
+
+			// pushToken(&tstream, &length);
+			// memcpy(&tstream[length - 1], prev, sizeof(Token));
 			// tstream[length-1] = *prev;
 		}
 		else if /* Logical AND Operation */ (strcmp(word, "&&") == 0)
 		{
-			Token* prev = popToken(tstream, &length);
-			// check if prev is a function identifier
+			Token* tail = malloc(sizeof(Token));
+			tail->type = OperatorToken;
+			tail->value = (TokenValue)(Operator)LOGICAL_AND;
+			
+			Token* prev = _stream_head->prev;
+			prev->next = tail;
+			tail->next = prev;
+			_stream_head->next = NULL;
+			_stream_head = tail;
 
-			pushToken(&tstream, &length);
-			tstream[length - 1] = (Token){
-					.type = OperatorToken,
-					.value = (TokenValue)(Operator)LOGICAL_AND,
-			};
+			// Token* prev = popToken(tstream, &length);
+
+			// pushToken(&tstream, &length);
+			// tstream[length - 1] = (Token){
+			// 		.type = OperatorToken,
+			// 		.value = (TokenValue)(Operator)LOGICAL_AND,
+			// };
 		}
 		else if /* Call Operation */ (strcmp(word, "<|") == 0)
 		{
-			Token* prev = popToken(tstream, &length);
+			Token* prev = _stream_head->prev;
+			TokenStream head = _stream_head;
 
 			// check if prev is a function identifier
 			bool found = false;
-			for (size_t i = 0; i < length; i++)
-			{
-				if (
-						tstream[i].type == ProcedureToken &&
-						strcmp(tstream[i].value.__f.name, prev->value.__f.name) == 0)
-				{
+			while (head->prev != NULL) {
+				Token* curr = head->prev;
+				if (curr->type == ProcedureToken && strcmp(curr->value.__f.name, prev->value.__f.name) == 0) {
 					found = true;
+					break;
 				}
+				head = head->prev;
 			}
 
 			if (!found)
 				CompilerError(fstr("Use of un-declared function \"%s\".", prev->value.__f.name));
+
+			Token* tail = malloc(sizeof(Token));
+			tail->type = OperatorToken;
+			tail->value = (TokenValue)(Operator)MUL;
+			prev->next = tail;
+			tail->next = prev;
+			_stream_head->next = NULL;
+			_stream_head = tail;
+
+			Token* prev = popToken(tstream, &length);
+
 
 			pushToken(&tstream, &length);
 			tstream[length - 1] = (Token){
@@ -819,14 +1002,20 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 				if (
 						tstream[i].type == DeclarationToken &&
 						strcmp(tstream[i].value.__i.name, word) == 0)
-				{
 					found = true;
-					pushToken(&tstream, &length);
-					tstream[length - 1] = (Token){
-							.type = IdentifierToken,
-							.value = (TokenValue)tstream[i].value};
-					memcpy(&tstream[length - 1].value, &tstream[i].value, sizeof(TokenValue));
-				}
+				else if (
+						tstream[i].type == ProcedureToken &&
+						strcmp(tstream[i].value.__f.name, word) == 0)
+					found = true;
+				else
+					continue;
+
+				pushToken(&tstream, &length);
+				tstream[length - 1] = (Token){
+						.type = IdentifierToken,
+						.value = tstream[i].value};
+				// memcpy(&tstream[length - 1].value, &tstream[i].value, sizeof(TokenValue));
+				break;	
 			}
 
 			if (!found)
@@ -856,28 +1045,18 @@ void parse(const str filename, TokenStream* stream, uint* parselen)
 
 void wline(str* buf, str ln)
 {
-	uint _size = strlen(*buf) + strlen(ln);
-		
-  // if (_flen <= 0)
-  //   return;
-  
-	// str new = malloc((_size + _flen) * sizeof(char));
-  // strcpy(new, *buf);
-  // if (_size > 0)
-  //   new[_size++] = '\n';
-    
-  // strcpy(&new[_size], ln);
-	// new[_size + _flen] = '\0';
-	// *buf = new;
+	uint _flen = strlen(ln);
+  if (_flen == 0) return;
 
-	_size++;
-
-	str new = malloc(_size * sizeof(char));
+	uint _size = strlen(*buf);
+	str new = malloc((_size + _flen + 1) * sizeof(char));
 	strcpy(new, *buf);
-	new[strlen(*buf)] = '\n';
 
-	strcpy(&new[strlen(*buf) + 1], ln);
-	new[_size] = '\0';
+  // if (_size > 0)
+	new[_size++] = '\n';
+
+	strcpy(&(new[_size]), ln);
+	new[_size + _flen] = '\0';
 	*buf = new;
 }
 
@@ -894,16 +1073,16 @@ void fline(str* buf, str ln, ...) {
 
 	va_end(args);
 
-	uint _size = strlen(*buf);
-	
   if (flen <= 0)
     return;
-  
-	str new = malloc((_size + flen) * sizeof(char));
-  strcpy(new, *buf);
+	
+	uint _size = strlen(*buf);
+	str new = malloc((_size + flen + 1) * sizeof(char));
+	strcpy(new, *buf);
+
   if (_size > 0)
     new[_size++] = '\n';
-    
+
   strcpy(&new[_size], line);
 	new[_size + flen] = '\0';
 	*buf = new;
@@ -937,7 +1116,7 @@ str _val_(Token token) {
 			{
 				case FloatValue:
 				case StringValue: 
-					return fstr("[%s]", token.value.__l.value.__s);
+					return fstr("%s", token.value.__l.value.__s);
 				
 				case IntValue:
 					return fstr("%d", token.value.__l.value.__i);
@@ -990,12 +1169,9 @@ str resolveOperator(TokenStream* stream, uint* length, uint index, size_t* retur
 	Token _op_arg1 = (*stream)[index + 1];
 	Token _op_arg2 = (*stream)[index + 2];
 
-	// printf("\n%d", index);
 	// printf("\n");
 	// for (size_t i = 0; i < (*length); i++)
-	// {
 	// 	printf("\tT%d", (*stream)[i].type);
-	// }
 	
 	switch (op)
 	{
@@ -1007,7 +1183,11 @@ str resolveOperator(TokenStream* stream, uint* length, uint index, size_t* retur
 			Identifier dest = _op_arg1.value.__i;
 			switch (_op_arg2.type)
 			{
-				case IdentifierToken:
+				case IdentifierToken: {
+					fline(&ops, "mov rsi, %s", _val_(_op_arg2));
+					fline(&ops, "mov %s [%s], rsi", opsize, dest.name);
+					break;
+					}
 				case LiteralToken:
 					fline(&ops, "mov %s [%s], %s", opsize, dest.name, _addr_(_op_arg2));
 					break;
@@ -1021,6 +1201,18 @@ str resolveOperator(TokenStream* stream, uint* length, uint index, size_t* retur
 			}
 			rippleDeleteTokens(stream, length, index, 3);
 			*return_index = index;
+			break;
+			}
+
+		case CALL: {
+			if (_op_arg1.type != IdentifierToken)
+				CompilerError("Call to non-function");
+			
+			printf("\nHere\n");
+			// Function fn = _op_arg1.value.__f;
+			// // Identifier fn = _op_arg1.value.__i;
+			// // fline(&ops, "call %s", fn.name);
+			printf("call %x", _op_arg1.value.__f);
 			break;
 			}
 
@@ -1076,15 +1268,13 @@ void clean_codegen(str* code) {
 void codegen_x86_64(TokenStream stream, uint length, str outfile)
 {
 	FILE* fout = fopen(outfile, "w");
-
 	if (fout == NULL)
 		CompilerError(fstr("Couldn't create \"%s\".", outfile));
 
-	str
-		head,
-		text = "",
-		data = "",
-		bss = "";
+	str head = "";
+	str text = "";
+	str data = "";
+	str bss = "";
 
 	// Header
 	fline(&head, "BITS %d\n", 64);
@@ -1125,34 +1315,40 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 		if (token->type == DeclarationToken) {
 			Identifier* iden = &token->value.__i;
 
-			str ptr_name = fstr("_var_%s", iden->name);
-			fline(&bss, "%s: resb %d", ptr_name, iden->msize);
+			iden->name = fstr("_var_%s", iden->name);
+			fline(&bss, "%s: resb %d", iden->name, iden->msize);
 
-			iden->name = malloc(strlen(ptr_name) * sizeof(char));
-			strcpy(iden->name, ptr_name);
+
 		}
 		else if (token->type == ProcedureToken) {
 			Function* function = &token->value.__f;
 			
-			str fn_name = fstr("_fn_%s", function->name);
-			str rt_name = fstr("rtn%s", fn_name);
+			function->name = fstr("_fn_%s", function->name);
+			str rt_name = fstr("rtn%s", function->name);
 
 			switch (function->type)
 			{
-			case IntValue:
-				fline(&bss, "%s: resb %d", rt_name, sizeof(__int64_t));
-				break;
-			case FloatValue:
-				fline(&bss, "%s: resb %d", rt_name, sizeof(float));
-				break;
-			case StringValue:
-				fline(&bss, "%s: resb %d", rt_name, sizeof(char*));
-				break;
-			default: break;
+				case IntValue:
+					fline(&bss, "%s: resb %d", rt_name, sizeof(__int64_t));
+					break;
+				case FloatValue:
+					fline(&bss, "%s: resb %d", rt_name, sizeof(float));
+					break;
+				case StringValue:
+					fline(&bss, "%s: resb %d", rt_name, sizeof(char*));
+					break;
+				default: break;
 			}
-			
-			function->name = malloc(strlen(fn_name) * sizeof(char));
-			strcpy(function->name, fn_name);
+
+			uint params = 0;
+
+			if (stream[++_ti].type == ExpressionStartToken) {
+				while (stream[_ti].type != ExpressionEndToken)
+					if (stream[++_ti].type == DeclarationToken)
+						params++;
+
+				function->nargs = params;
+			}
 		}
 
 	}
@@ -1178,25 +1374,21 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 						uint _syscall_nargs = 0;
 						while (token[_syscall_nargs + 1].value.__k != END)
 							_syscall_nargs++;
-
+							
 						for (size_t i = 0; i < _syscall_nargs; i++)
 							fline(&text, "mov %s, %s", __linux_syscall_argloc(i), _val_(token[i+1]));
 
 						wline(&text, "syscall");
 						rippleDeleteTokens(&stream, &length, index, _syscall_nargs + 2);
 						return_index = index;
-						}
 						break;
+						}
 
 					default:
 						break;
 				}
+				break;
 				}
-				break;
-
-			case DeclarationToken:
-				/* code */
-				break;
 
 			case OperatorToken:
 				fline(&text, resolveOperator(&stream, &length, index, &return_index));
@@ -1206,6 +1398,12 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 				fline(&text, "mov rax, %s", _val_(*token));
 				break;
 
+			case ProcedureToken: {
+				Function fn = (*token).value.__f;
+				fline(&text, "%s:", fn.name);
+
+				break;
+				}
 
 			case ExpressionStartToken:
 				/* code */
@@ -1229,10 +1427,10 @@ void codegen_x86_64(TokenStream stream, uint length, str outfile)
 
 	// Temporary clean to handle string corruption
 	// @todo find why this is happening
-	// clean_codegen(&head);
-	// clean_codegen(&data);
-	// clean_codegen(&text);
-	// clean_codegen(&bss);
+	clean_codegen(&head);
+	clean_codegen(&data);
+	clean_codegen(&text);
+	clean_codegen(&bss);
 
 	// Write all strings to file
 	fprintf(fout, "%s", head);
@@ -1357,7 +1555,8 @@ int main(int argc, str argv[])
 		compileTarget(target, ASM, x86_64);
 
 		system(fstr("nasm -felf64 %s", ASM));
-		system(fstr("ld -o %s %s", name, OBJ));
+		system(fstr("ld -o %s %s", "a.out", OBJ));
+		// system(fstr("ld -o %s %s", name, OBJ));
 
 		// system(fstr("rm %s %s", ASM, OBJ));
 

@@ -2,5 +2,14 @@
 /.vscode/targets.log
 /.vscode/configurationCache.log
 
+# Keep only boot binary
 dang
 !boot/dang
+
+# Keep ASM in boot folder
+*.asm
+!boot/*.asm
+
+# Dont keep intermediate files
+*.o
+*.out
