@@ -1,6 +1,7 @@
 {
   "makefile.extensionOutputFolder": "./.vscode",
   "files.associations": {
+    "*.asm": "asm-intel-x86-generic",
     "string.h": "c",
     "functional": "c",
     "string": "c",
@@ -20,6 +21,7 @@
     "__memory": "c",
     "limits": "c",
     "random": "c",
-    "vector": "c"
+    "vector": "c",
+    "stddef.h": "c"
   }
 }

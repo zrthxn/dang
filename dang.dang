@@ -1,18 +1,18 @@
 syscall 1 1 "Hello, World!" 13 end
 
-var greet:str = "Hello, World!"
-syscall 1 1 greet 13 end
+# var greet:str = "Hello, World!"
+# syscall 1 1 greet 13 end
 
-var greet2:str = greet
-syscall 1 1 greet2 13 end
-
-fn exit:null ( var status:int ) 
-  syscall 60 status end
-end
-
-exit <| 0
-
-syscall 60 69 end
+# var greet2:str = greet
+# syscall 1 1 greet2 13 end
+# 
+# fn exit:null ( var status:int ) 
+#   syscall 60 status end
+# end
+# 
+# exit <| 0
+# 
+# syscall 60 69 end
 
 # I support comments now
 # var bye:int = 23 + 45 * 3 / 4
