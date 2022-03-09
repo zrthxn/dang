@@ -35,38 +35,6 @@ str __linux_syscall_argloc(uint narg)
 	}
 }
 
-str _val_(Token token)
-{
-	switch (token.type)
-	{
-	case DeclarationToken:
-		return fstr("[%s]", token.value.__i.name);
-	case IdentifierToken:
-		return fstr("[_var_%s]", token.value.__i.name);
-
-	case MemoryToken:
-		return token.value.m;
-
-	case LiteralToken:
-	{
-		switch (token.value.__l.type)
-		{
-		case FloatValue:
-		case StringValue:
-			return fstr("%s", token.value.__l.value.__s);
-
-		case IntValue:
-			return fstr("%d", token.value.__l.value.__i);
-
-		default:
-			return "";
-		}
-	}
-
-	default:
-		return "";
-	}
-}
 
 str _addr_(Token token)
 {
