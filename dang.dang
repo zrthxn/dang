@@ -11,8 +11,6 @@ syscall 1 1 greet2 19 end
 # end
 # 
 # exit <| 0
-# 
-# syscall 60 69 end
 
 # I support comments now
 # var bye:int = 23 + 45 * 3 / 4

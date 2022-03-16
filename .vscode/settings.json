@@ -1,5 +1,6 @@
 {
   "makefile.extensionOutputFolder": "./.vscode",
+  "C_Cpp.default.compilerPath": "clang",
   "files.associations": {
     "*.asm": "asm-intel-x86-generic",
     "string.h": "c",

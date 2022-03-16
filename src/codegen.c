@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -132,7 +133,7 @@ str resolveOperator(Token *operator, TokenStream *head)
 
 	Token _op_arg1 = *(operator->next);
 	Token _op_arg2 = *(operator->next->next);
-	
+
 	switch (operator->value.__o)
 	{
 	case ASSIGN:
@@ -222,10 +223,6 @@ void clean_codegen(str *code)
 
 void codegen(TokenStream _stream_head, str outfile)
 {
-	FILE *fout = fopen(outfile, "w");
-	if (fout == NULL)
-		CompilerError(fstr("Couldn't create \"%s\".", outfile));
-
 	str head = "";
 	str text = "";
 	str data = "";
@@ -283,39 +280,39 @@ void codegen(TokenStream _stream_head, str outfile)
 			iden->name = fstr("_var_%s", iden->name);
 			fline(&bss, "%s: resb %d", iden->name, iden->msize);
 		}
-		// else if (token->type == ProcedureToken)
-		// {
-		// 	Function *function = &token->value.__f;
+		else if (token->type == ProcedureToken)
+		{
+			Function *function = &token->value.__f;
 
-		// 	function->name = fstr("_fn_%s", function->name);
-		// 	str rt_name = fstr("rtn%s", function->name);
+			function->name = fstr("_fn_%s", function->name);
+			str rt_name = fstr("rtn%s", function->name);
 
-		// 	switch (function->type)
-		// 	{
-		// 	case IntValue:
-		// 		fline(&bss, "%s: resb %d", rt_name, sizeof(__int64_t));
-		// 		break;
-		// 	case FloatValue:
-		// 		fline(&bss, "%s: resb %d", rt_name, sizeof(float));
-		// 		break;
-		// 	case StringValue:
-		// 		fline(&bss, "%s: resb %d", rt_name, sizeof(char *));
-		// 		break;
-		// 	default:
-		// 		break;
-		// 	}
+			switch (function->type)
+			{
+			case IntValue:
+				fline(&bss, "%s: resb %d", rt_name, sizeof(__int64_t));
+				break;
+			case FloatValue:
+				fline(&bss, "%s: resb %d", rt_name, sizeof(float));
+				break;
+			case StringValue:
+				fline(&bss, "%s: resb %d", rt_name, sizeof(char *));
+				break;
+			default:
+				break;
+			}
 
-		// 	// uint params = 0;
+			// uint params = 0;
 
-		// 	// if (stream[++_ti].type == ExpressionStartToken)
-		// 	// {
-		// 	// 	while (stream[_ti].type != ExpressionEndToken)
-		// 	// 		if (stream[++_ti].type == DeclarationToken)
-		// 	// 			params++;
+			// if (stream[++_ti].type == ExpressionStartToken)
+			// {
+			// 	while (stream[_ti].type != ExpressionEndToken)
+			// 		if (stream[++_ti].type == DeclarationToken)
+			// 			params++;
 
-		// 	// 	function->nargs = params;
-		// 	// }
-		// }
+			// 	function->nargs = params;
+			// }
+		}
 	}
 
 	// Iterate through functions
@@ -395,6 +392,10 @@ void codegen(TokenStream _stream_head, str outfile)
 	clean_codegen(&data);
 	clean_codegen(&text);
 	clean_codegen(&bss);
+
+	FILE *fout = fopen(outfile, "w");
+	if (fout == NULL)
+		CompilerError(fstr("Couldn't create \"%s\".", outfile));
 
 	// Write all strings to file
 	fprintf(fout, "%s", head);
