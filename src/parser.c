@@ -145,7 +145,7 @@ struct TokenStreamNode
 };
 
 typedef struct TokenStreamNode Token;
-typedef Token *TokenStream;
+typedef Token* TokenStream;
 
 void pushToken(TokenStream *stream, uint *len)
 {
@@ -162,18 +162,6 @@ void pushToken(TokenStream *stream, uint *len)
 Token *popToken(TokenStream stream, uint *len)
 {
 	return &stream[--(*len)];
-}
-
-void rippleDeleteTokens(TokenStream *stream, uint *len, uint index, uint count)
-{
-	for (size_t i = index; i < *len; i++)
-	{
-		if (i + count < *len)
-			memcpy(&((*stream)[i]), &((*stream)[i + count]), sizeof(Token));
-		else
-			(*stream)[i] = (Token){};
-	}
-	*len -= count;
 }
 
 bool isInteger(str word)
@@ -238,75 +226,26 @@ uint parseTypeSize(str type)
 	/* Fallback */ return sizeof(char *);
 }
 
-void pushBack(Token *head, Token *node)
+void pushBack(TokenStream *head, Token *node)
 {
-	printf("IN %x, %x\t", head, node);
-	if (head == NULL) {
-		node->prev = NULL;
-		node->next = NULL;
-		head = node;
-	}
-	else {
-		Token *temp = head;  
-		while(temp->next != NULL)
-			temp = temp->next;
-		
-		temp->next = node;
-		node->prev = temp;
-		node->next = NULL;
-	}	
-	printf("OUT %x, %x\n", head, node);
+	node->next = NULL;
+	node->prev = *head;
+
+	if (*head != NULL)
+		(*head)->next = node;
+
+	*head = node;
 }
 
-void pushInsertPrevious(Token *head, Token *node) {
-	Token *prev = head->prev;
+void pushInsertPrevious(TokenStream *head, Token *node) {
+	Token *prev = (*head)->prev;
 	prev->next = node;
 	
+	node->next = *head;
 	node->prev = prev;
-	node->next = head;
 
-	head->next = NULL;
-	head->prev = node;
-
-	head = node;
-}
-
-
-
-str _val_(Token token)
-{
-	switch (token.type)
-	{
-	case DeclarationToken:
-		return fstr("[%s]", token.value.__i.name);
-	case IdentifierToken:
-		return fstr("[_var_%s]", token.value.__i.name);
-
-	case MemoryToken:
-		return token.value.m;
-
-	case KeywordToken:
-		return fstr("%d", token.value.__k);
-
-	case LiteralToken:
-	{
-		switch (token.value.__l.type)
-		{
-		case FloatValue:
-		case StringValue:
-			return fstr("%s", token.value.__l.value.__s);
-
-		case IntValue:
-			return fstr("%d", token.value.__l.value.__i);
-
-		default:
-			return "";
-		}
-	}
-
-	default:
-		return "";
-	}
+	(*head)->next = NULL;
+	(*head)->prev = node;
 }
 
 TokenStream parse(const str filename)
@@ -320,12 +259,6 @@ TokenStream parse(const str filename)
 	lex(filename, &lexicon, &lexsize);
 
 	Token *_stream_head = NULL;
-	Token *_stream_tail = NULL;
-	
-	_stream_tail = _stream_head;
-	
-	// _stream_head->next = NULL;
-	// _stream_head->prev = NULL;
 
 	while (lexsize)
 	{
@@ -347,7 +280,7 @@ TokenStream parse(const str filename)
 			Token *tail = malloc(sizeof(Token));
 			tail->type = ExpressionStartToken;
 			tail->value = (TokenValue)NULL,
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* Expression End */ (
 				strcmp(word, "]") == 0 || strcmp(word, "}") == 0 || strcmp(word, ")") == 0)
@@ -356,7 +289,7 @@ TokenStream parse(const str filename)
 			Token *tail = malloc(sizeof(Token));
 			tail->type = ExpressionEndToken;
 			tail->value = (TokenValue)NULL,
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		// Keywords ---------------------------------------------------------------
 		else if /* Include other files */ (strcmp(word, "include") == 0)
@@ -380,7 +313,7 @@ TokenStream parse(const str filename)
 			tail->type = KeywordToken;
 			tail->value = (TokenValue)(Keyword)WHILE;
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* End */ (strcmp(word, "if") == 0)
 		{
@@ -388,7 +321,7 @@ TokenStream parse(const str filename)
 			tail->type = KeywordToken;
 			tail->value = (TokenValue)(Keyword)IF;
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* End */ (strcmp(word, "then") == 0)
 		{
@@ -396,7 +329,7 @@ TokenStream parse(const str filename)
 			tail->type = KeywordToken;
 			tail->value = (TokenValue)(Keyword)THEN;
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* End */ (strcmp(word, "elif") == 0)
 		{
@@ -404,7 +337,7 @@ TokenStream parse(const str filename)
 			tail->type = KeywordToken;
 			tail->value = (TokenValue)(Keyword)ELIF;
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* Else */ (strcmp(word, "else") == 0)
 		{
@@ -412,7 +345,7 @@ TokenStream parse(const str filename)
 			tail->type = KeywordToken;
 			tail->value = (TokenValue)(Keyword)ELSE;
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* Do */ (strcmp(word, "do") == 0)
 		{
@@ -420,7 +353,7 @@ TokenStream parse(const str filename)
 			tail->type = KeywordToken;
 			tail->value = (TokenValue)(Keyword)DO;
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* End */ (strcmp(word, "end") == 0)
 		{
@@ -428,7 +361,7 @@ TokenStream parse(const str filename)
 			tail->type = KeywordToken;
 			tail->value = (TokenValue)(Keyword)END;
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* Return */ (strcmp(word, "return") == 0)
 		{
@@ -436,7 +369,7 @@ TokenStream parse(const str filename)
 			tail->type = KeywordToken;
 			tail->value = (TokenValue)(Keyword)RETURN;
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* Syscall */ (strcmp(word, "syscall") == 0)
 		{
@@ -444,19 +377,7 @@ TokenStream parse(const str filename)
 			tail->type = KeywordToken;
 			tail->value = (TokenValue)(Keyword)SYSCALL;
 
-			pushBack(_stream_head, tail);
-			// tail = &(Token){ .next = NULL, .prev = _stream_head };
-			// Token tail = (Token){
-			// 		.type = KeywordToken,
-			// 		.value = (TokenValue)(Keyword)SYSCALL
-			// 	};
-			// pushBack(_stream_head, &tail);
-
-			// tail.prev = _stream_head;
-			// tail.next = NULL;
-			
-			// _stream_head->next = &tail;
-			// _stream_head = &tail;
+			pushBack(&_stream_head, tail);
 		}
 		// Declarations -----------------------------------------------------------
 		else if /* Variable declaration */ (strcmp(word, "var") == 0)
@@ -480,7 +401,7 @@ TokenStream parse(const str filename)
 					.type = parseStringType(type),
 			};
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* Function Declarations */ (strcmp(word, "fn") == 0)
 		{
@@ -503,25 +424,22 @@ TokenStream parse(const str filename)
 					.nargs = 0,
 			};
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 
 			// add n args
 		}
 		// Operations -------------------------------------------------------------
 		else if /* Assignment Operation */ (strcmp(word, "=") == 0)
 		{
-			Token *prev = _stream_head->prev;
+			Token *prev = _stream_head;
 			if (prev->type != DeclarationToken && prev->type != IdentifierToken)
-				CompilerError("Assigning to non-identifier.");
+				CompilerError(fstr("Assigning to non-identifier \"%d\".", prev->type));
 
 			Token *tail = malloc(sizeof(Token));
 			tail->type = OperatorToken;
 			tail->value = (TokenValue)(Operator)ASSIGN;
 
-			prev->next = tail;
-			tail->next = prev;
-			_stream_head->next = NULL;
-			_stream_head = tail;
+			pushInsertPrevious(&_stream_head, tail);
 		}
 		else if /* Addition Operation */ (strcmp(word, "+") == 0)
 		{
@@ -529,11 +447,7 @@ TokenStream parse(const str filename)
 			tail->type = OperatorToken;
 			tail->value = (TokenValue)(Operator)ADD;
 
-			Token *prev = _stream_head->prev;
-			prev->next = tail;
-			tail->next = prev;
-			_stream_head->next = NULL;
-			_stream_head = tail;
+			pushInsertPrevious(&_stream_head, tail);
 		}
 		else if /* Subtraction Operation */ (strcmp(word, "-") == 0)
 		{
@@ -541,7 +455,7 @@ TokenStream parse(const str filename)
 			tail->type = OperatorToken;
 			tail->value = (TokenValue)(Operator)ASSIGN;
 
-			pushInsertPrevious(_stream_head, tail);
+			pushInsertPrevious(&_stream_head, tail);
 		}
 		else if /* Multiplication Operation */ (strcmp(word, "*") == 0)
 		{
@@ -549,7 +463,7 @@ TokenStream parse(const str filename)
 			tail->type = OperatorToken;
 			tail->value = (TokenValue)(Operator)MUL;
 
-			pushInsertPrevious(_stream_head, tail);
+			pushInsertPrevious(&_stream_head, tail);
 		}
 		else if /* Division Operation */ (strcmp(word, "/") == 0)
 		{
@@ -557,7 +471,7 @@ TokenStream parse(const str filename)
 			tail->type = OperatorToken;
 			tail->value = (TokenValue)(Operator)DIV;
 
-			pushInsertPrevious(_stream_head, tail);
+			pushInsertPrevious(&_stream_head, tail);
 		}
 		else if /* Logical AND Operation */ (strcmp(word, "&&") == 0)
 		{
@@ -565,7 +479,7 @@ TokenStream parse(const str filename)
 			tail->type = OperatorToken;
 			tail->value = (TokenValue)(Operator)LOGICAL_AND;
 
-			pushInsertPrevious(_stream_head, tail);
+			pushInsertPrevious(&_stream_head, tail);
 		}
 		else if /* Call Operation */ (strcmp(word, "<|") == 0)
 		{
@@ -592,7 +506,7 @@ TokenStream parse(const str filename)
 			tail->type = OperatorToken;
 			tail->value = (TokenValue)(Operator)CALL;			
 
-			pushInsertPrevious(_stream_head, tail);
+			pushInsertPrevious(&_stream_head, tail);
 		}
 		// Literals ---------------------------------------------------------------
 		else if /* Int Literals */ (isInteger(word))
@@ -605,7 +519,7 @@ TokenStream parse(const str filename)
 					.msize = sizeof(__int64_t),
 			};
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* String Literals */ (word[0] == '\"' && word[len - 1] == '\"')
 		{
@@ -621,7 +535,7 @@ TokenStream parse(const str filename)
 			};
 
 			strcpy(tail->value.__l.value.__s, value);
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* Float Literals */ (isFloat(word))
 		{
@@ -633,7 +547,7 @@ TokenStream parse(const str filename)
 					.msize = sizeof(float),
 			};
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		else if /* NULL Literals */ (strcmp(word, "null") == 0)
 		{
@@ -645,38 +559,35 @@ TokenStream parse(const str filename)
 					.value = (LiteralValue)(int)0,
 			};
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 		// Word or Identifier -----------------------------------------------------
 		else if (isalpha(word[0]) && strlen(word) <= 32)
 		{
-			TokenStream head = _stream_head;
 			bool found = false;
-			Token curr = *head;
 
+			TokenStream head = _stream_head;
+			Token curr = *head;
 			while (head != NULL && !found)
 			{
 				curr = *head;
+				head = head->prev;
+
 				if (curr.type == DeclarationToken && strcmp(curr.value.__i.name, word) == 0)
 					found = true;
 				else if (curr.type == ProcedureToken && strcmp(curr.value.__f.name, word) == 0)
 					found = true;
-				else
-				{
-					head = head->prev;
-					continue;
-				}
 			}
 
 			if (!found)
 				CompilerError(fstr("Un-declared identifier \"%s\".", word));
 
 			Token *tail = malloc(sizeof(Token));
-			tail->type = LiteralToken;
+			tail->type = IdentifierToken;
 			tail->value = curr.value;
 			memcpy(&(tail->value), &curr.value, sizeof(TokenValue));
 
-			pushBack(_stream_head, tail);
+			pushBack(&_stream_head, tail);
 		}
 
 		else /* Something unrecognised was thrown own way */
@@ -687,25 +598,11 @@ TokenStream parse(const str filename)
 		lexsize--;
 	}
 
-	// *parselen += length;
-	// *stream = malloc((*parselen) * sizeof(Token));
+	// Roll pointer back to begenning of stream
+	while (_stream_head->prev != NULL)
+		_stream_head = _stream_head->prev;
 
-	// if ((*parselen) > 1)
-	// 	for (size_t i = 0; i < (*parselen) - 1; i++)
-	// 		(*stream)[i] = tstream[i];
-
-	// *stream = tstream;
-
-	TokenStream HEAD = _stream_head;
-	while (HEAD->prev != NULL)
-	{
-		Token *token = HEAD;
-		printf("%d -> %s\n", token->type, _val_(*token));
-		HEAD = HEAD->prev;
-	}
-	exit(69);
-
-	return _stream_tail;
+	return _stream_head;
 }
 
 #endif

@@ -1,11 +1,11 @@
 syscall 1 1 "Hello, World!" 13 end
 
-# var greet:str = "Hello, World!"
-# syscall 1 1 greet 13 end
+var greet:str = "Goodnight Tennessee"
+syscall 1 1 greet 19 end
 
-# var greet2:str = greet
-# syscall 1 1 greet2 13 end
-# 
+var greet2:str = greet
+syscall 1 1 greet2 19 end
+
 # fn exit:null ( var status:int ) 
 #   syscall 60 status end
 # end

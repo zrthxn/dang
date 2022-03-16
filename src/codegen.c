@@ -12,6 +12,18 @@
 // --------------------------
 // Targets ------------------
 
+TokenStream rippleDeleteTokens(TokenStream *head, uint count)
+{
+	TokenStream *join = head;
+	while (count--) *join = (*join)->next;
+
+	(*head)->next = (*join)->next;
+	if ((*join)->next != NULL)
+		(*join)->next->prev = *head;
+
+	return (*head)->next;
+}
+
 str __linux_syscall_argloc(uint narg)
 {
 	switch (narg)
@@ -35,6 +47,44 @@ str __linux_syscall_argloc(uint narg)
 	}
 }
 
+str _val_(Token token)
+{
+	switch (token.type)
+	{
+	case DeclarationToken:
+		return fstr("[%s]", token.value.__i.name);
+	case IdentifierToken:
+		return fstr("[_var_%s]", token.value.__i.name);
+
+	case MemoryToken:
+		return token.value.m;
+
+	case KeywordToken:
+		return fstr("%d", token.value.__k);
+
+	case OperatorToken:
+		return fstr("OP%d", token.value.__o);
+
+	case LiteralToken:
+	{
+		switch (token.value.__l.type)
+		{
+		case FloatValue:
+		case StringValue:
+			return fstr("%s", token.value.__l.value.__s);
+
+		case IntValue:
+			return fstr("%d", token.value.__l.value.__i);
+
+		default:
+			return "";
+		}
+	}
+
+	default:
+		return "";
+	}
+}
 
 str _addr_(Token token)
 {
@@ -69,25 +119,21 @@ str _addr_(Token token)
 	}
 }
 
-str resolveOperator(TokenStream* stream, uint *length, uint index, size_t *return_index)
+str resolveOperator(Token *operator, TokenStream *head)
 {
-	Operator op = (*stream)[index].value.__o;
+	// List of operation instructions
 	str ops = "";
 
-	if ((*stream)[index + 1].type == OperatorToken)
-		wline(&ops, resolveOperator(stream, length, index + 1, return_index));
+	if (operator->next->type == OperatorToken)
+		wline(&ops, resolveOperator(operator->next, head));
 
-	if ((*stream)[index + 2].type == OperatorToken)
-		wline(&ops, resolveOperator(stream, length, index + 2, return_index));
+	if (operator->next->next->type == OperatorToken)
+		wline(&ops, resolveOperator(operator->next->next, head));
 
-	Token _op_arg1 = (*stream)[index + 1];
-	Token _op_arg2 = (*stream)[index + 2];
-
-	// printf("\n");
-	// for (size_t i = 0; i < (*length); i++)
-	// 	printf("\tT%d", (*stream)[i].type);
-
-	switch (op)
+	Token _op_arg1 = *(operator->next);
+	Token _op_arg2 = *(operator->next->next);
+	
+	switch (operator->value.__o)
 	{
 	case ASSIGN:
 	{
@@ -96,27 +142,19 @@ str resolveOperator(TokenStream* stream, uint *length, uint index, size_t *retur
 
 		str opsize = "qword";
 		Identifier dest = _op_arg1.value.__i;
-		switch (_op_arg2.type)
-		{
-		case IdentifierToken:
-		{
+
+		if (_op_arg2.type == IdentifierToken) {
 			fline(&ops, "mov rsi, %s", _val_(_op_arg2));
 			fline(&ops, "mov %s [%s], rsi", opsize, dest.name);
-			break;
 		}
-		case LiteralToken:
+		else if (_op_arg2.type == LiteralToken)
 			fline(&ops, "mov %s [%s], %s", opsize, dest.name, _addr_(_op_arg2));
-			break;
-
-		case MemoryToken:
+		else if (_op_arg2.type == MemoryToken)
 			fline(&ops, "mov [%s], %s", dest.name, _addr_(_op_arg2));
-			break;
-
-		default:
+		else
 			CompilerError("Assignment should be from literal or variable.");
-		}
-		rippleDeleteTokens(stream, length, index, 3);
-		*return_index = index;
+
+		*head = rippleDeleteTokens(&operator, 2);
 		break;
 	}
 
@@ -144,11 +182,10 @@ str resolveOperator(TokenStream* stream, uint *length, uint index, size_t *retur
 		fline(&ops, "add rax, %s", _val_(_op_arg2));
 		wline(&ops, "mov rdx, rax");
 
-		(*stream)[index].type = MemoryToken;
-		(*stream)[index].value.m = fstr("rdx");
+		(*head)->type = MemoryToken;
+		(*head)->value.m = fstr("rdx");
 
-		rippleDeleteTokens(stream, length, index + 1, 2);
-		*return_index = index;
+		*head = rippleDeleteTokens(&operator, 2);
 		break;
 	}
 
@@ -163,11 +200,10 @@ str resolveOperator(TokenStream* stream, uint *length, uint index, size_t *retur
 		fline(&ops, "sub rax, %s", _val_(_op_arg2));
 		wline(&ops, "mov rdx, rax");
 
-		(*stream)[index].type = MemoryToken;
-		(*stream)[index].value.m = fstr("rdx");
+		(*head)->type = MemoryToken;
+		(*head)->value.m = fstr("rdx");
 
-		rippleDeleteTokens(stream, length, index + 1, 2);
-		*return_index = index;
+		*head = rippleDeleteTokens(&operator, 2);
 		break;
 	}
 
@@ -203,27 +239,27 @@ void codegen(TokenStream _stream_head, str outfile)
 	// Pre-allocate addresses for literals
 	wline(&data, "section .data");
 	uint istr = 0, iflt = 0;
-	while (HEAD->next != NULL)
+	while (HEAD != NULL)
 	{
-		HEAD = HEAD->next;
 		Token *token = HEAD;
+		HEAD = HEAD->next;
 
-		printf("%d ->\n", token->type);
+		printf("%d -> %s\n", token->type, _val_(*token));
 
 		if (token->type != LiteralToken)
 			continue;
 
-		Literal literal = token->value.__l;
-		switch (literal.type)
+		Literal *literal = &token->value.__l;
+		switch (literal->type)
 		{
 		case StringValue:
 		{
 			str str_name = fstr("str%u", istr++);
-			fline(&data, "%s: db \"%s\", 0x00", str_name, literal.value.__s);
+			fline(&data, "%s: db \"%s\", 0x00", str_name, literal->value.__s);
 
-			// literal.value.__s = malloc(strlen(str_name) * sizeof(char));
-			// strcpy(literal.value.__s, str_name);
-			literal.value.__s = str_name;
+			literal->value.__s = malloc(strlen(str_name) * sizeof(char));
+			strcpy(literal->value.__s, str_name);
+			// literal.value.__s = str_name;
 			break;
 		}
 
@@ -234,54 +270,53 @@ void codegen(TokenStream _stream_head, str outfile)
 	}
 
 	// Reserve memory for variables
-	// wline(&bss, "section .bss");
-	// TokenStream HEAD = _stream_head;
-	// while (HEAD != NULL)
-	// {
-	// 	Token *token = HEAD->next;
-	// 	if (token->type == DeclarationToken)
-	// 	{
-	// 		Identifier *iden = &token->value.__i;
+	wline(&bss, "section .bss");
+	HEAD = _stream_head;
+	while (HEAD != NULL)
+	{
+		Token *token = HEAD;
+		HEAD = HEAD->next;
 
-	// 		iden->name = fstr("_var_%s", iden->name);
-	// 		fline(&bss, "%s: resb %d", iden->name, iden->msize);
-	// 	}
-	// 	else if (token->type == ProcedureToken)
-	// 	{
-	// 		Function *function = &token->value.__f;
+		if (token->type == DeclarationToken)
+		{
+			Identifier *iden = &token->value.__i;
+			iden->name = fstr("_var_%s", iden->name);
+			fline(&bss, "%s: resb %d", iden->name, iden->msize);
+		}
+		// else if (token->type == ProcedureToken)
+		// {
+		// 	Function *function = &token->value.__f;
 
-	// 		function->name = fstr("_fn_%s", function->name);
-	// 		str rt_name = fstr("rtn%s", function->name);
+		// 	function->name = fstr("_fn_%s", function->name);
+		// 	str rt_name = fstr("rtn%s", function->name);
 
-	// 		switch (function->type)
-	// 		{
-	// 		case IntValue:
-	// 			fline(&bss, "%s: resb %d", rt_name, sizeof(__int64_t));
-	// 			break;
-	// 		case FloatValue:
-	// 			fline(&bss, "%s: resb %d", rt_name, sizeof(float));
-	// 			break;
-	// 		case StringValue:
-	// 			fline(&bss, "%s: resb %d", rt_name, sizeof(char *));
-	// 			break;
-	// 		default:
-	// 			break;
-	// 		}
+		// 	switch (function->type)
+		// 	{
+		// 	case IntValue:
+		// 		fline(&bss, "%s: resb %d", rt_name, sizeof(__int64_t));
+		// 		break;
+		// 	case FloatValue:
+		// 		fline(&bss, "%s: resb %d", rt_name, sizeof(float));
+		// 		break;
+		// 	case StringValue:
+		// 		fline(&bss, "%s: resb %d", rt_name, sizeof(char *));
+		// 		break;
+		// 	default:
+		// 		break;
+		// 	}
 
-	// 		uint params = 0;
+		// 	// uint params = 0;
 
-	// 		if (stream[++_ti].type == ExpressionStartToken)
-	// 		{
-	// 			while (stream[_ti].type != ExpressionEndToken)
-	// 				if (stream[++_ti].type == DeclarationToken)
-	// 					params++;
+		// 	// if (stream[++_ti].type == ExpressionStartToken)
+		// 	// {
+		// 	// 	while (stream[_ti].type != ExpressionEndToken)
+		// 	// 		if (stream[++_ti].type == DeclarationToken)
+		// 	// 			params++;
 
-	// 			function->nargs = params;
-	// 		}
-	// 	}
-
-	// 	HEAD = HEAD->next;
-	// }
+		// 	// 	function->nargs = params;
+		// 	// }
+		// }
+	}
 
 	// Iterate through functions
 	wline(&text, "section .text");
@@ -290,10 +325,10 @@ void codegen(TokenStream _stream_head, str outfile)
 
 	// Iterate through tokens
 	HEAD = _stream_head;
-	while (HEAD->next != NULL)
+	while (HEAD != NULL)
 	{
-		HEAD = HEAD->next;
 		Token *token = HEAD;
+		HEAD = HEAD->next;
 
 		switch (token->type)
 		{
@@ -305,16 +340,12 @@ void codegen(TokenStream _stream_head, str outfile)
 			case SYSCALL:
 			{
 				uint _syscall_nargs = 0;
+				token = token->next; // Move past the SYSCALL keyword
+
 				while (token->value.__k != END) {
-					fline(&text, "mov %s, %s", __linux_syscall_argloc(_syscall_nargs++), _val_(*(token->next)));
+					fline(&text, "mov %s, %s", __linux_syscall_argloc(_syscall_nargs++), _val_(*token));
 					token = token->next;
 				}
-
-				// for (size_t i = 0; i < _syscall_nargs; i++)
-				// 	fline(&text, "mov %s, %s", __linux_syscall_argloc(i), _val_(token[i + 1]));
-
-				// rippleDeleteTokens(&stream, &length, index, _syscall_nargs + 2);
-				// return_index = index;
 
 				wline(&text, "syscall");
 				HEAD = token;
@@ -328,7 +359,7 @@ void codegen(TokenStream _stream_head, str outfile)
 		}
 
 		case OperatorToken:
-			// fline(&text, resolveOperator(&stream, &length, index, &return_index));
+			wline(&text, resolveOperator(token, &HEAD));
 			break;
 
 		case LiteralToken:
@@ -351,18 +382,12 @@ void codegen(TokenStream _stream_head, str outfile)
 			/* code */
 			break;
 		}
-
-		// if (return_index != -1)
-		// {
-		// 	index = return_index - 1;
-		// 	return_index = -1;
-		// }
 	}
 
 	// return 0;
-	// wline(&text, "mov rax, 60");
-	// wline(&text, "mov rdi, 0");
-	// wline(&text, "syscall");
+	wline(&text, "mov rax, 60");
+	wline(&text, "mov rdi, 0");
+	wline(&text, "syscall");
 
 	// Temporary clean to handle string corruption
 	// @todo find why this is happening
