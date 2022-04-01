@@ -1,5 +1,5 @@
 COMPILER = clang
-CFLAGS = -g
+CFLAGS = -g -O0
 
 .PHONY: all build compiler bootstrap
 
@@ -9,7 +9,8 @@ build:
 	$(COMPILER) $(CFLAGS) dang.c -o dang
 
 compiler: build
-	./dang program.dang
+	./dang dang.dang -asm
 
 bootstrap: build
-	@cp dang boot/
+	@cp dang boot
+	@cp dang.asm boot
