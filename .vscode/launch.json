@@ -9,9 +9,11 @@
       "request": "launch",
       "name": "Debug",
       "program": "${workspaceFolder}/dang",
+      "preLaunchTask": "makebuild",
       "args": [
         "./dang",
-        "dang.dang"
+        "dang.dang",
+        "-asm"
       ],
       "cwd": "${workspaceFolder}"
     }

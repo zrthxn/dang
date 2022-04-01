@@ -1,21 +1,33 @@
 syscall 1 1 "Hello, World!" 13 end
 
-var greet:str = "Goodnight Tennessee"
+let greet:str = "Goodnight Tennessee"
 syscall 1 1 greet 19 end
 
-var greet2:str = greet
+let greet2:str = greet
 syscall 1 1 greet2 19 end
 
-# fn exit:null ( var status:int ) 
+let code:int = 5 + 2 - 3 - 4 + 3 - 2 + 7 - 4 - 3 + 8 - 9 + 1 + 5 + 2 - 3 - 4 + 3 - 2 + 7 - 4 - 3 + 8 - 9 + 1
+syscall 60 code end
+
+# macro exit [ syscall 60 ] end
+# exit 0 end
+# 
+# macro print [ syscall 1 1 ] end
+# print greet 19 end
+# 
+# macro print [ syscall 1 1 $ $ end ] end
+# print(greet,19)
+
+# fn exit:null ( let status:int ) 
 #   syscall 60 status end
 # end
 # 
 # exit <| 0
 
 # I support comments now
-# var bye:int = 23 + 45 * 3 / 4
+# let bye:int = 23 + 45 * 3 / 4
 
-# fn print:null ( var s:str )
+# fn print:null ( let s:str )
 #   syscall 1 1 s strlen <| s end
 # end
 

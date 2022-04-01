@@ -1,5 +1,5 @@
 COMPILER = clang
-CFLAGS = -g
+CFLAGS = -g -O0
 
 .PHONY: all build compiler bootstrap
 

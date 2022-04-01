@@ -1,72 +1,25 @@
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>
 
 #ifndef UTILS_C_INCLUDED
 #define UTILS_C_INCLUDED
 
-typedef enum
-{
-	false,
-	true
-} bool;
+typedef enum { false, true } bool;
 typedef unsigned int uint;
 typedef char *str;
 
 // Stack of module paths being compiled
-str* __TARGETS__;
-
-/**
- * @brief Check if a given module has been included
- * Will be useful to check for circular dependencies
- */
-bool isTargetCompiling(str module)
-{
-	uint __ti = 0;
-	while (__TARGETS__[__ti] != NULL)
-		if (strcmp(__TARGETS__[__ti++], module) == 0)
-			return true;
-
-	return false;
-}
-
-/**
- * @brief Set a given module has been included
- */
-void setTargetCompiling(str module)
-{
-	if (isTargetCompiling(module))
-	{
-		fprintf(stderr, "\nError: Circular dependency, \"%s\" dependends on a module that is using it.\n", module);
-		exit(1);
-	}
-
-	uint __ti = 0;
-	str *targets = malloc(sizeof(str));
-
-	targets[__ti] = malloc(strlen(module) * sizeof(char));
-	strcpy(targets[__ti], module);
-
-	while (__TARGETS__[__ti] != NULL)
-	{
-		targets[__ti + 1] = malloc(strlen(__TARGETS__[__ti]) * sizeof(char));
-		strcpy(targets[__ti + 1], __TARGETS__[__ti]);
-		free(__TARGETS__[__ti]);
-		targets[(++__ti) + 1] = NULL;
-	}
-	free(__TARGETS__);
-	__TARGETS__ = targets;
-}
+str *__TARGETS__;
 
 /**
  * @brief Conveinience function to throw compiler error
  *
  * @param message Error message
  */
-void CompilerError(str message)
-{
-	fprintf(stderr, "\nError: %s\n", message);
-	exit(1);
+void CompilerError(str message) {
+  fprintf(stderr, "\nError: %s\n", message);
+  exit(1);
 }
 
 /**
@@ -76,28 +29,27 @@ void CompilerError(str message)
  * @param ... Formatting params
  * @return str Owned string
  */
-str fstr(str ln, ...)
-{
-	va_list args;
-	va_start(args, ln);
+str fstr(str ln, ...) {
+  va_list args;
+  va_start(args, ln);
 
-	uint _LINE_MAXSIZE = strlen(ln) + 128;
-	str line = malloc(_LINE_MAXSIZE * sizeof(char));
-	int flen = vsnprintf(line, _LINE_MAXSIZE * sizeof(char), ln, args);
+  uint _LINE_MAXSIZE = strlen(ln) + 128;
+  str line = malloc(_LINE_MAXSIZE * sizeof(char));
+  int flen = vsnprintf(line, _LINE_MAXSIZE * sizeof(char), ln, args);
 
-	if (flen > _LINE_MAXSIZE)
-		CompilerError("Formattted string too large.");
+  if (flen > _LINE_MAXSIZE)
+    CompilerError("Formattted string too large.");
 
-	va_end(args);
+  va_end(args);
 
-	str new;
-	if (flen > 0)
-	{
-		new = malloc(flen * sizeof(char));
-		strcpy(new, line);
-	}
+  str new;
+  if (flen > 0) {
+    new = malloc(flen * sizeof(char));
+    strcpy(new, line);
+  }
 
-	return new;
+  free(line);
+  return new;
 }
 
 /**
@@ -106,22 +58,22 @@ str fstr(str ln, ...)
  * @param buf
  * @param ln
  */
-void wline(str *buf, str ln)
-{
-	uint _flen = strlen(ln);
-	if (_flen == 0)
-		return;
+void wline(str *buf, str ln) {
+  uint _flen = strlen(ln);
+  if (_flen == 0)
+    return;
 
-	uint _size = strlen(*buf);
-	str new = malloc((_size + _flen + 1) * sizeof(char));
-	strcpy(new, *buf);
+  uint _size = strlen(*buf);
+  str new = malloc((_size + (_size > 0 ? 2 : 1) + _flen) * sizeof(char));
+  strcpy(new, *buf);
+  free(*buf);
 
-	// if (_size > 0)
-	new[_size++] = '\n';
+  if (_size > 0)
+    new[_size++] = '\n';
 
-	strcpy(&(new[_size]), ln);
-	new[_size + _flen] = '\0';
-	*buf = new;
+  strcpy(&(new[_size]), ln);
+  new[_size + _flen] = '\0';
+  *buf = new;
 }
 
 /**
@@ -131,59 +83,93 @@ void wline(str *buf, str ln)
  * @param ln
  * @param ...
  */
-void fline(str *buf, str ln, ...)
-{
-	va_list args;
-	va_start(args, ln);
+void fline(str *buf, str ln, ...) {
+  va_list args;
+  va_start(args, ln);
 
-	uint _LINE_MAXSIZE = strlen(ln) + 128;
-	str line = malloc(_LINE_MAXSIZE * sizeof(char));
-	int flen = vsnprintf(line, _LINE_MAXSIZE * sizeof(char), ln, args);
+  uint _LINE_MAXSIZE = strlen(ln) + 128;
+  str line = malloc(_LINE_MAXSIZE * sizeof(char));
+  int flen = vsnprintf(line, _LINE_MAXSIZE * sizeof(char), ln, args);
 
-	if (flen > _LINE_MAXSIZE)
-		CompilerError("Formattted string too large.");
+  if (flen > _LINE_MAXSIZE)
+    CompilerError("Formattted string too large.");
 
-	va_end(args);
+  va_end(args);
 
-	if (flen <= 0)
-		return;
+  if (flen <= 0)
+    return;
 
-	uint _size = strlen(*buf);
-	str new = malloc((_size + flen + 1) * sizeof(char));
-	strcpy(new, *buf);
+  uint _size = strlen(*buf);
+  str new = malloc((_size + (_size > 0 ? 2 : 1) + flen) * sizeof(char));
+  strcpy(new, *buf);
+  free(*buf);
 
-	if (_size > 0)
-		new[_size++] = '\n';
+  if (_size > 0)
+    new[_size++] = '\n';
 
-	strcpy(&new[_size], line);
-	new[_size + flen] = '\0';
-	*buf = new;
+  strcpy(&new[_size], line);
+  free(line);
+  new[_size + flen] = '\0';
+  *buf = new;
 }
 
-bool arrIncludes(str array[], uint len, str query)
-{
-	for (uint i = 0; i < len; i++)
-	{
-		if (strcmp(array[i], query) == 0)
-			return true;
-	}
-	return false;
+/**
+ * @brief Check if a given module has been included
+ * Will be useful to check for circular dependencies
+ */
+bool isTargetCompiling(str module) {
+  uint __ti = 0;
+  while (__TARGETS__[__ti] != NULL)
+    if (strcmp(__TARGETS__[__ti++], module) == 0)
+      return true;
+
+  return false;
 }
 
-int indexOf(str array[], uint len, str query)
-{
-	for (uint i = 0; i < len; i++)
-	{
-		if (strcmp(array[i], query) == 0)
-			return i;
-	}
-	return -1;
+/**
+ * @brief Set a given module has been included
+ */
+void setTargetCompiling(str module) {
+  if (isTargetCompiling(module))
+    CompilerError(fstr(
+        "Circular dependency, \"%s\" dependends on a module that is using it.",
+        module));
+
+  uint __ti = 0;
+  str *targets = malloc(sizeof(str));
+
+  targets[__ti] = malloc(strlen(module) * sizeof(char));
+  strcpy(targets[__ti], module);
+
+  while (__TARGETS__[__ti] != NULL) {
+    targets[__ti + 1] = malloc(strlen(__TARGETS__[__ti]) * sizeof(char));
+    strcpy(targets[__ti + 1], __TARGETS__[__ti]);
+    free(__TARGETS__[__ti]);
+    targets[(++__ti) + 1] = NULL;
+  }
+  free(__TARGETS__);
+  __TARGETS__ = targets;
 }
 
-void printall(str *array, size_t size)
-{
-	for (size_t i = 0; i < size; i++)
-		printf("%s\n", array[i]);
+bool arrIncludes(str array[], uint len, str query) {
+  for (uint i = 0; i < len; i++) {
+    if (strcmp(array[i], query) == 0)
+      return true;
+  }
+  return false;
+}
+
+int indexOf(str array[], uint len, str query) {
+  for (uint i = 0; i < len; i++) {
+    if (strcmp(array[i], query) == 0)
+      return i;
+  }
+  return -1;
+}
+
+void printall(str *array, size_t size) {
+  for (size_t i = 0; i < size; i++)
+    printf("%s\n", array[i]);
 }
 
 #endif

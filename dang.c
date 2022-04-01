@@ -48,14 +48,6 @@ void compileTarget(const str filename, const str outfile)
 	
 	uint length = 0;
 	TokenStream stream = parse(filename);
-	
-	// TokenStream HEAD = stream;
-	// while (HEAD->next != NULL)
-	// {
-	// 	HEAD = HEAD->next;
-	// 	Token *token = HEAD;
-	// 	printf("%d ->\n", token->type);
-	// }
 
 	codegen(stream, outfile);
 }

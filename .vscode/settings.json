@@ -1,6 +1,7 @@
 {
   "makefile.extensionOutputFolder": "./.vscode",
   "C_Cpp.default.compilerPath": "clang",
+  "editor.defaultFormatter": "xaver.clang-format",
   "files.associations": {
     "*.asm": "asm-intel-x86-generic",
     "string.h": "c",
