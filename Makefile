@@ -12,4 +12,5 @@ compiler: build
 	./dang dang.dang -asm
 
 bootstrap: build
-	@cp dang boot/
+	@cp dang boot
+	@cp dang.asm boot
