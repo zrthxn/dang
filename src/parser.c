@@ -32,15 +32,24 @@ typedef enum KeywordTypes {
 
 typedef enum OperatorTypes {
   _O = __KEYWORDS_COUNT,
-  // Binary Ops
+
+  // Unary Ops --------------
+  BIT_NOT,     // !
+  LOGICAL_NOT, // !!
+
+  INCREMENT, // ++
+  DECREMENT, // --
+  // DEREF, // *
+  __UNARY_OPERATIONS,
+
+  // Binary Ops -------------
   ADD, // +
   SUB, // -
   MUL, // *
   DIV, // /
-  // MOD, // %
+  MOD, // %
 
   ASSIGN, // =
-  CALL,   // <|
 
   LOGICAL_GREATER_THAN, // >
   LOGICAL_LESS_THAN,    // <
@@ -56,15 +65,12 @@ typedef enum OperatorTypes {
   BIT_AND, // &
   BIT_OR,  // |
   BIT_XOR, // ^
-
-  // Unary Ops
-  BIT_NOT,     // !
-  LOGICAL_NOT, // !!
-
-  // INCREMENT, // ++
-  // DECREMENT, // --
-  // DEREF, // *
   // ACCESSOR, // .
+  __BINARY_OPERATIONS,
+
+  // Nnary Ops -------------
+  CALL,   // <|
+  __NNARY_OPERATIONS,
   __OPERATIONS_COUNT,
 } Operator;
 
@@ -138,6 +144,31 @@ struct TokenStreamNode {
 typedef struct TokenStreamNode Token;
 typedef Token *TokenStream;
 
+str strTokenType(TokenType type) {
+  switch (type) {
+  case KeywordToken:
+    return fstr("keyword");
+  case LiteralToken:
+    return fstr("literal");
+  case MemoryToken:
+    return fstr("literal");
+  case DeclarationToken:
+    return fstr("declare");
+  case ProcedureToken:
+    return fstr("function");
+  case IdentifierToken:
+    return fstr("variable");
+  case OperatorToken:
+    return fstr("operator");
+  case ExpressionStartToken:
+    return fstr("opn expr");
+  case ExpressionEndToken:
+    return fstr("end expr");
+  default:
+    return "";
+  }
+}
+
 void pushToken(TokenStream *stream, uint *len) {
   TokenStream __new = malloc((++(*len)) * sizeof(Token));
   if ((*len) > 1)
@@ -192,10 +223,12 @@ bool isFloat(str word) {
 Type parseStringType(str type) {
   if (strcmp(type, "int") == 0)
     return IntValue;
-  if (strcmp(type, "float") == 0)
+  else if (strcmp(type, "float") == 0)
     return FloatValue;
-  if (strcmp(type, "str") == 0)
+  else if (strcmp(type, "str") == 0)
     return StringValue;
+  else if (strcmp(type, "null") == 0)
+    return NullValue;
   /* Fallback */ return IntValue;
 }
 
@@ -207,6 +240,23 @@ uint parseTypeSize(str type) {
   if (strcmp(type, "str") == 0)
     return sizeof(char *);
   /* Fallback */ return sizeof(char *);
+}
+
+uint typeSize(Type type) {
+  if (type == IntValue)
+    return sizeof(__int64_t);
+  if (type == FloatValue)
+    return sizeof(float);
+  if (type == StringValue)
+    return sizeof(char *);
+  /* Fallback */ return sizeof(char *);
+}
+
+Token *createToken(TokenType type, TokenValue value) {
+  Token *token = malloc(sizeof(Token));
+  token->type = type;
+  token->value = value;
+  return token;
 }
 
 void pushBack(TokenStream *head, Token *node) {
@@ -253,19 +303,13 @@ TokenStream parse(const str filename) {
                                       strcmp(word, "{") == 0 ||
                                       strcmp(word, "(") == 0) {
       // check previous
-      Token *tail = malloc(sizeof(Token));
-      tail->type = ExpressionStartToken;
-      tail->value = (TokenValue)NULL;
-
+      Token *tail = createToken(ExpressionStartToken, (TokenValue)NULL);
       pushBack(&_stream_head, tail);
     } else if /* Expression End */ (strcmp(word, "]") == 0 ||
                                     strcmp(word, "}") == 0 ||
                                     strcmp(word, ")") == 0) {
       // check previous
-      Token *tail = malloc(sizeof(Token));
-      tail->type = ExpressionEndToken;
-      tail->value = (TokenValue)NULL;
-			
+      Token *tail = createToken(ExpressionEndToken, (TokenValue)NULL);
       pushBack(&_stream_head, tail);
     }
     // Keywords ---------------------------------------------------------------
@@ -283,64 +327,34 @@ TokenStream parse(const str filename) {
       while (_include_->next != NULL)
         _stream_head = _include_->next;
     } else if /* End */ (strcmp(word, "while") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = KeywordToken;
-      tail->value = (TokenValue)(Keyword)WHILE;
-
+      Token *tail = createToken(KeywordToken, (TokenValue)(Keyword)WHILE);
       pushBack(&_stream_head, tail);
     } else if /* End */ (strcmp(word, "if") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = KeywordToken;
-      tail->value = (TokenValue)(Keyword)IF;
-
+      Token *tail = createToken(KeywordToken, (TokenValue)(Keyword)IF);
       pushBack(&_stream_head, tail);
     } else if /* End */ (strcmp(word, "then") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = KeywordToken;
-      tail->value = (TokenValue)(Keyword)THEN;
-
+      Token *tail = createToken(KeywordToken, (TokenValue)(Keyword)THEN);
       pushBack(&_stream_head, tail);
     } else if /* End */ (strcmp(word, "elif") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = KeywordToken;
-      tail->value = (TokenValue)(Keyword)ELIF;
-
+      Token *tail = createToken(KeywordToken, (TokenValue)(Keyword)ELIF);
       pushBack(&_stream_head, tail);
     } else if /* Else */ (strcmp(word, "else") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = KeywordToken;
-      tail->value = (TokenValue)(Keyword)ELSE;
-
+      Token *tail = createToken(KeywordToken, (TokenValue)(Keyword)ELSE);
       pushBack(&_stream_head, tail);
     } else if /* Do */ (strcmp(word, "do") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = KeywordToken;
-      tail->value = (TokenValue)(Keyword)DO;
-
+      Token *tail = createToken(KeywordToken, (TokenValue)(Keyword)DO);
       pushBack(&_stream_head, tail);
     } else if /* End */ (strcmp(word, "end") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = KeywordToken;
-      tail->value = (TokenValue)(Keyword)END;
-
+      Token *tail = createToken(KeywordToken, (TokenValue)(Keyword)END);
       pushBack(&_stream_head, tail);
     } else if /* Return */ (strcmp(word, "return") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = KeywordToken;
-      tail->value = (TokenValue)(Keyword)RETURN;
-
+      Token *tail = createToken(KeywordToken, (TokenValue)(Keyword)RETURN);
       pushBack(&_stream_head, tail);
     } else if /* Syscall */ (strcmp(word, "syscall") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = KeywordToken;
-      tail->value = (TokenValue)(Keyword)SYSCALL;
-
+      Token *tail = createToken(KeywordToken, (TokenValue)(Keyword)SYSCALL);
       pushBack(&_stream_head, tail);
     } else if /* Macro */ (strcmp(word, "macro") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = KeywordToken;
-      tail->value = (TokenValue)(Keyword)MACRO;
-
+      Token *tail = createToken(KeywordToken, (TokenValue)(Keyword)MACRO);
       pushBack(&_stream_head, tail);
     }
     // Declarations -----------------------------------------------------------
@@ -356,13 +370,12 @@ TokenStream parse(const str filename) {
       arg[split++] = '\0';
       str type = &arg[split];
 
-      Token *tail = malloc(sizeof(Token));
-      tail->type = DeclarationToken;
-      tail->value = (TokenValue)(Identifier){
+      Token *tail = createToken(DeclarationToken, 
+        (TokenValue)(Identifier){
           .name = fstr(arg),
           .msize = parseTypeSize(type),
           .type = parseStringType(type),
-      };
+        });
 
       pushBack(&_stream_head, tail);
     } else if /* Function Declarations */ (strcmp(word, "fn") == 0) {
@@ -377,13 +390,12 @@ TokenStream parse(const str filename) {
       arg[split++] = '\0';
       str type = &arg[split];
 
-      Token *tail = malloc(sizeof(Token));
-      tail->type = ProcedureToken;
-      tail->value = (TokenValue)(Function){
+      Token *tail = createToken(ProcedureToken, 
+        (TokenValue)(Function){
           .name = fstr(arg),
           .type = parseStringType(type),
           .nargs = 0,
-      };
+        });
 
       pushBack(&_stream_head, tail);
     }
@@ -393,51 +405,47 @@ TokenStream parse(const str filename) {
       if (prev->type != DeclarationToken && prev->type != IdentifierToken)
         CompilerError(fstr("Assigning to non-identifier \"%d\".", prev->type));
 
-      Token *tail = malloc(sizeof(Token));
-      tail->type = OperatorToken;
-      tail->value = (TokenValue)(Operator)ASSIGN;
-
+      Token *tail = createToken(OperatorToken, (TokenValue)(Operator)ASSIGN);
       pushInsertPrevious(&_stream_head, tail);
     } else if /* Addition Operation */ (strcmp(word, "+") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = OperatorToken;
-      tail->value = (TokenValue)(Operator)ADD;
-
+      Token *tail = createToken(OperatorToken, (TokenValue)(Operator)ADD);
       pushInsertPrevious(&_stream_head, tail);
     } else if /* Subtraction Operation */ (strcmp(word, "-") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = OperatorToken;
-      tail->value = (TokenValue)(Operator)SUB;
-
+      Token *tail = createToken(OperatorToken, (TokenValue)(Operator)SUB);
       pushInsertPrevious(&_stream_head, tail);
     } else if /* Multiplication Operation */ (strcmp(word, "*") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = OperatorToken;
-      tail->value = (TokenValue)(Operator)MUL;
-
+      Token *tail = createToken(OperatorToken, (TokenValue)(Operator)MUL);
       pushInsertPrevious(&_stream_head, tail);
     } else if /* Division Operation */ (strcmp(word, "/") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = OperatorToken;
-      tail->value = (TokenValue)(Operator)DIV;
-
+      Token *tail = createToken(OperatorToken, (TokenValue)(Operator)DIV);
+      pushInsertPrevious(&_stream_head, tail);
+    } else if /* Division Operation */ (strcmp(word, "%") == 0) {
+      Token *tail = createToken(OperatorToken, (TokenValue)(Operator)MOD);
       pushInsertPrevious(&_stream_head, tail);
     } else if /* Logical AND Operation */ (strcmp(word, "&&") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = OperatorToken;
-      tail->value = (TokenValue)(Operator)LOGICAL_AND;
-
+      Token *tail = createToken(OperatorToken, (TokenValue)(Operator)LOGICAL_AND);
+      pushInsertPrevious(&_stream_head, tail);
+    } else if /* Logical OR Operation */ (strcmp(word, "||") == 0) {
+      Token *tail = createToken(OperatorToken, (TokenValue)(Operator)LOGICAL_OR);
+      pushInsertPrevious(&_stream_head, tail);
+    } else if /* Logical OR Operation */ (strcmp(word, "!!") == 0) {
+      Token *tail = createToken(OperatorToken, (TokenValue)(Operator)LOGICAL_NOT);
+      pushInsertPrevious(&_stream_head, tail);
+    } else if /* Bit shift right Operation */ (strcmp(word, ">>") == 0) {
+      Token *tail = createToken(OperatorToken, (TokenValue)(Operator)BIT_SHIFT_RIGHT);
+      pushInsertPrevious(&_stream_head, tail);
+    } else if /* Bit shift right Operation */ (strcmp(word, "<<") == 0) {
+      Token *tail = createToken(OperatorToken, (TokenValue)(Operator)BIT_SHIFT_LEFT);
       pushInsertPrevious(&_stream_head, tail);
     } else if /* Call Operation */ (strcmp(word, "<|") == 0) {
-      Token *prev = _stream_head->prev;
+      Function callee = _stream_head->value.__f;
       TokenStream head = _stream_head;
 
       // check if prev is a function identifier
       bool found = false;
       while (head->prev != NULL) {
         Token *curr = head->prev;
-        if (curr->type == ProcedureToken &&
-            strcmp(curr->value.__f.name, prev->value.__f.name) == 0) {
+        if (curr->type == ProcedureToken && strcmp(curr->value.__f.name, callee.name) == 0) {
           found = true;
           break;
         }
@@ -445,58 +453,50 @@ TokenStream parse(const str filename) {
       }
 
       if (!found)
-        CompilerError(
-            fstr("Use of un-declared function \"%s\".", prev->value.__f.name));
+        CompilerError(fstr("Use of un-declared function \"%s\".", callee.name));
 
-      Token *tail = malloc(sizeof(Token));
-      tail->type = OperatorToken;
-      tail->value = (TokenValue)(Operator)CALL;
-
+      Token *tail = createToken(OperatorToken, (TokenValue)(Operator)CALL);
       pushInsertPrevious(&_stream_head, tail);
     }
     // Literals ---------------------------------------------------------------
     else if /* Int Literals */ (isInteger(word)) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = LiteralToken;
-      tail->value = (TokenValue)(Literal){
+      Token *tail = createToken(LiteralToken,
+        (TokenValue)(Literal){
           .type = IntValue,
           .value = (LiteralValue)(int)atoi(word),
           .msize = sizeof(__int64_t),
-      };
+        });
 
       pushBack(&_stream_head, tail);
     } else if /* String Literals */ (word[0] == '\"' && word[len - 1] == '\"') {
       str value = &word[1];
       value[len - 2] = '\0';
 
-      Token *tail = malloc(sizeof(Token));
-      tail->type = LiteralToken;
-      tail->value = (TokenValue)(Literal){
+      Token *tail = createToken(LiteralToken,
+        (TokenValue)(Literal){
           .type = StringValue,
           .value = (LiteralValue)(str)value,
           .msize = (len - 2) * sizeof(char),
-      };
+        });
 
       strcpy(tail->value.__l.value.__s, value);
       pushBack(&_stream_head, tail);
     } else if /* Float Literals */ (isFloat(word)) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = LiteralToken;
-      tail->value = (TokenValue)(Literal){
+      Token *tail = createToken(LiteralToken,
+        (TokenValue)(Literal){
           .type = FloatValue,
           .value = (LiteralValue)(float)atof(word),
           .msize = sizeof(float),
-      };
+        });
 
       pushBack(&_stream_head, tail);
     } else if /* NULL Literals */ (strcmp(word, "null") == 0) {
-      Token *tail = malloc(sizeof(Token));
-      tail->type = LiteralToken;
-      tail->value = (TokenValue)(Literal){
+      Token *tail = createToken(LiteralToken,
+        (TokenValue)(Literal){
           .type = NullValue,
           .msize = sizeof(void *),
           .value = (LiteralValue)(int)0,
-      };
+        });
 
       pushBack(&_stream_head, tail);
     }
@@ -523,7 +523,6 @@ TokenStream parse(const str filename) {
 
       Token *tail = malloc(sizeof(Token));
       tail->type = IdentifierToken;
-      tail->value = curr.value;
       memcpy(&(tail->value), &curr.value, sizeof(TokenValue));
 
       pushBack(&_stream_head, tail);

@@ -65,15 +65,17 @@ str syscall_argloc(uint narg) {
 str _val_(Token token) {
   switch (token.type) {
   case DeclarationToken:
-    return fstr("[%s]", token.value.__i.name);
   case IdentifierToken:
-    return fstr("[_var_%s]", token.value.__i.name);
+    return fstr("[%s]", token.value.__i.name);
 
   case MemoryToken:
     return token.value.m;
 
   case KeywordToken: // TBR
     return fstr("%d", token.value.__k);
+
+  case ProcedureToken: // TBR
+    return fstr("%s", token.value.__f.name);
 
   case OperatorToken: // TBR
     return fstr("OP%d", token.value.__o);
@@ -100,9 +102,8 @@ str _val_(Token token) {
 str _addr_(Token token) {
   switch (token.type) {
   case DeclarationToken:
-    return fstr("%s", token.value.__i.name);
   case IdentifierToken:
-    return fstr("_var_%s", token.value.__i.name);
+    return fstr("%s", token.value.__i.name);
 
   case MemoryToken:
     return token.value.m;
@@ -126,38 +127,104 @@ str _addr_(Token token) {
   }
 }
 
-void resolveOperator(str *ops, Token *operator) {
-  // // List of operation instructions
-  // str ops = "";
+bool isTokenOperable(Token *token) {
+  switch (token->type) {
+  case LiteralToken:
+  case MemoryToken:
+  case DeclarationToken:
+  case IdentifierToken:
+    return true;
 
+  default:
+    return false;
+  }
+}
+
+bool isUnaryOperator(Operator op) {
+  if (op > _O && op < __UNARY_OPERATIONS)
+    return true;
+  return false;
+}
+
+bool isBinaryOperator(Operator op) {
+  if (op > __UNARY_OPERATIONS && op < __BINARY_OPERATIONS)
+    return true;
+  return false;
+}
+
+bool isNnaryOperator(Operator op) {
+  if (op > __BINARY_OPERATIONS && op < __NNARY_OPERATIONS)
+    return true;
+  return false;
+}
+
+void resolveOperator(str *ops, Token *operator);
+
+void resolveUnaryOperator(str *ops, Token *operator) {
+  if (operator->next->type == OperatorToken)
+    resolveOperator(ops, operator->next);
+
+  Token op_arg1 = *operator->next;
+
+  // printf("\n%s\n", *ops);
+  // printf("[%s:%x] %s:%x \n", _val_(*operator), operator,
+  //       _val_(op_arg1), operator->next
+  //       );
+
+  if (!isTokenOperable(&op_arg1))
+    CompilerError(
+        fstr("Invalid first operand of type %d.", strTokenType(op_arg1.type)));
+
+  switch (operator->value.__o) {
+  case BIT_NOT: {
+    fline(ops, "mov rax, %s", _val_(op_arg1));
+    // fline(ops, "xor rax, %s", _val_(op_arg2));
+    wline(ops, "mov rdx, rax");
+
+    operator->type = MemoryToken;
+    operator->value.m = fstr("rdx");
+    rippleDeleteTokens(&operator, 2);
+    break;
+  }
+  }
+}
+
+void resolveBinaryOperator(str *ops, Token *operator) {
   if (operator->next->type == OperatorToken)
     resolveOperator(ops, operator->next);
   if (operator->next->next->type == OperatorToken)
     resolveOperator(ops, operator->next->next);
 
-  Token _op_arg1 = *operator->next;
-  Token _op_arg2 = *operator->next->next;
+  Token op_arg1 = *operator->next;
+  Token op_arg2 = *operator->next->next;
 
   // printf("\n%s\n", *ops);
   // printf("[%s:%x] %s:%x | %s:%x \n", _val_(*operator), operator,
-  //       _val_(_op_arg1), operator->next,
-  //       _val_(_op_arg2), operator->next->next
+  //       _val_(op_arg1), operator->next,
+  //       _val_(op_arg2), operator->next->next
   //       );
+
+  if (!isTokenOperable(&op_arg1))
+    CompilerError(
+        fstr("Invalid first operand of type %d.", strTokenType(op_arg1.type)));
+  if (!isTokenOperable(&op_arg2))
+    CompilerError(
+        fstr("Invalid second operand of type %d.", strTokenType(op_arg2.type)));
 
   switch (operator->value.__o) {
   case ASSIGN: {
-    if (_op_arg1.type != IdentifierToken && _op_arg1.type != DeclarationToken)
+    if (op_arg1.type != IdentifierToken && op_arg1.type != DeclarationToken)
       CompilerError("Assigning to non-identifier");
 
-    Identifier dest = _op_arg1.value.__i;
+    Identifier dest = op_arg1.value.__i;
 
-    if (_op_arg2.type == IdentifierToken) {
-      fline(ops, "mov rsi, %s", _val_(_op_arg2));
+    if (op_arg2.type == IdentifierToken) {
+      fline(ops, "mov rsi, %s", _val_(op_arg2));
       fline(ops, "mov qword [%s], rsi", dest.name);
-    } else if (_op_arg2.type == LiteralToken)
-      fline(ops, "mov qword [%s], %s", dest.name, _addr_(_op_arg2));
-    else if (_op_arg2.type == MemoryToken)
-      fline(ops, "mov [%s], %s", dest.name, _addr_(_op_arg2));
+    } else if (op_arg2.type == LiteralToken)
+      fline(ops, "mov qword [%s], %s", dest.name, _addr_(op_arg2));
+    else if (op_arg2.type == MemoryToken)
+      fline(ops, "mov [%s], %s", dest.name, _addr_(op_arg2));
     else
       CompilerError("Assignment should be from literal or variable.");
 
@@ -165,60 +232,175 @@ void resolveOperator(str *ops, Token *operator) {
     break;
   }
 
-  case CALL: {
-    if (_op_arg1.type != IdentifierToken)
-      CompilerError("Call to non-function");
-
-    // printf("\nHere\n");
-    // // Function fn = _op_arg1.value.__f;
-    // // // Identifier fn = _op_arg1.value.__i;
-    // // // fline(&ops, "call %s", fn.name);
-    // printf("call %x", _op_arg1.value.__f);
-    break;
-  }
-
   case ADD: {
-    if (_op_arg1.type != IdentifierToken && _op_arg1.type != LiteralToken &&
-        _op_arg1.type != MemoryToken)
-      CompilerError(
-          fstr("Illegal operation, first operand %d.", _op_arg1.type));
-    if (_op_arg2.type != IdentifierToken && _op_arg2.type != LiteralToken &&
-        _op_arg2.type != MemoryToken)
-      CompilerError(
-          fstr("Illegal operation, second operand %d.", _op_arg2.type));
-
-    fline(ops, "mov rax, %s", _val_(_op_arg1));
-    fline(ops, "add rax, %s", _val_(_op_arg2));
+    fline(ops, "mov rax, %s", _val_(op_arg1));
+    fline(ops, "add rax, %s", _val_(op_arg2));
     wline(ops, "mov rdx, rax");
 
     operator->type = MemoryToken;
     operator->value.m = fstr("rdx");
-
     rippleDeleteTokens(&operator, 2);
     break;
   }
 
   case SUB: {
-    if (_op_arg1.type != IdentifierToken && _op_arg1.type != LiteralToken &&
-        _op_arg1.type != MemoryToken)
-      CompilerError("Illegal operation, first operand.");
-    if (_op_arg2.type != IdentifierToken && _op_arg2.type != LiteralToken &&
-        _op_arg2.type != MemoryToken)
-      CompilerError("Illegal operation, second operand.");
-
-    fline(ops, "mov rax, %s", _val_(_op_arg1));
-    fline(ops, "sub rax, %s", _val_(_op_arg2));
+    fline(ops, "mov rax, %s", _val_(op_arg1));
+    fline(ops, "sub rax, %s", _val_(op_arg2));
     wline(ops, "mov rdx, rax");
 
     operator->type = MemoryToken;
     operator->value.m = fstr("rdx");
-
     rippleDeleteTokens(&operator, 2);
     break;
   }
 
-  default:
+  case MUL: {
+    fline(ops, "mov rax, %s", _val_(op_arg1));
+    fline(ops, "imul rax, %s", _val_(op_arg2));
+    wline(ops, "mov rdx, rax");
+
+    operator->type = MemoryToken;
+    operator->value.m = fstr("rdx");
+    rippleDeleteTokens(&operator, 2);
     break;
+  }
+
+  case BIT_AND: {
+    fline(ops, "mov rax, %s", _val_(op_arg1));
+    fline(ops, "and rax, %s", _val_(op_arg2));
+    wline(ops, "mov rdx, rax");
+
+    operator->type = MemoryToken;
+    operator->value.m = fstr("rdx");
+    rippleDeleteTokens(&operator, 2);
+    break;
+  }
+
+  case BIT_OR: {
+    fline(ops, "mov rax, %s", _val_(op_arg1));
+    fline(ops, "or rax, %s", _val_(op_arg2));
+    wline(ops, "mov rdx, rax");
+
+    operator->type = MemoryToken;
+    operator->value.m = fstr("rdx");
+    rippleDeleteTokens(&operator, 2);
+    break;
+  }
+
+  case BIT_XOR: {
+    fline(ops, "mov rax, %s", _val_(op_arg1));
+    fline(ops, "xor rax, %s", _val_(op_arg2));
+    wline(ops, "mov rdx, rax");
+
+    operator->type = MemoryToken;
+    operator->value.m = fstr("rdx");
+    rippleDeleteTokens(&operator, 2);
+    break;
+  }
+  }
+}
+
+void resolveNnaryOperator(str *ops, Token *operator) {
+  if (operator->next->type == OperatorToken)
+    resolveOperator(ops, operator->next);
+
+  Token op_arg1 = *operator->next;
+
+  if (!isTokenOperable(&op_arg1))
+    CompilerError(
+        fstr("Invalid first operand of type %d.", strTokenType(op_arg1.type)));
+
+  switch (operator->value.__o) {
+  case CALL: {
+    if (op_arg1.type != IdentifierToken)
+      CompilerError("Call to non-function");
+
+    TokenStream head = operator;
+    while (head != NULL) {
+      head = head->prev;
+      if (head->type == ProcedureToken &&
+          strcmp(head->value.__f.name, op_arg1.value.__f.name) == 0) {
+        memcpy(&op_arg1.value, &(head->value), sizeof(TokenValue));
+        break;
+      }
+    }
+
+    Function fn = op_arg1.value.__f;
+    uint nargs = fn.nargs;
+    Token *args = op_arg1.next;
+
+    while (nargs > 0) {
+      if (args->type == OperatorToken)
+        resolveOperator(ops, args);
+      fline(ops, "xor rbx, rbx");
+      fline(ops, "mov rbx, %s", _val_(*args));
+      fline(ops, "push rbx", _addr_(*args));
+      args = args->next;
+      --nargs;
+    }
+
+    fline(ops, "call %s", fn.name);
+    fline(ops, "mov rdx, [_rtn%s]", fn.name);
+
+    operator->type = MemoryToken;
+    operator->value.m = fstr("rdx");
+    rippleDeleteTokens(&operator, fn.nargs);
+    break;
+  }
+  }
+}
+
+void resolveOperator(str *ops, Token *operator) {
+  if (isUnaryOperator(operator->value.__o))
+    return resolveUnaryOperator(ops, operator);
+  if (isBinaryOperator(operator->value.__o))
+    return resolveBinaryOperator(ops, operator);
+  if (isNnaryOperator(operator->value.__o))
+    return resolveNnaryOperator(ops, operator);
+}
+
+bool isBlockKeyword(Keyword key) {
+  switch (key) {
+  case FN:
+  case IF:
+  case WHILE:
+  case MACRO:
+    return true;
+
+  default:
+    return false;
+  }
+}
+
+void resolveProcedure(str *func, Token *token) {
+  Function fn = token->value.__f;
+  fline(func, "%s:", fn.name);
+
+  token = token->next;
+
+  for (size_t i = 0; i < fn.nargs; i++) {
+    wline(func, "pop rsi");
+    fline(func, "pop qword %s", _val_(*token));
+    wline(func, "push rsi");
+    token = token->next;
+  }
+    
+  uint localBlockDepth = 0;
+  while (true) {
+    if (token->type == KeywordToken) {
+      if (isBlockKeyword(token->value.__k))
+        localBlockDepth++;
+      else if (token->value.__k == END) {
+        if (localBlockDepth > 0)
+          localBlockDepth--;
+        else
+          break;
+      }
+    } else if (token->type == DeclarationToken)
+      strcpy(token->value.__i.name,
+             fstr("%s%s", fn.name, token->value.__i.name));
+
+    token = token->next;
   }
 }
 
@@ -232,6 +414,7 @@ void clean_codegen(str *code) {
 void codegen(TokenStream _stream_head, str outfile) {
   str head = malloc(sizeof(char));
   str text = malloc(sizeof(char));
+  str func = malloc(sizeof(char));
   str data = malloc(sizeof(char));
   str bss = malloc(sizeof(char));
 
@@ -239,163 +422,175 @@ void codegen(TokenStream _stream_head, str outfile) {
 
   // Header
   fline(&head, "BITS %d\n", 64);
+  wline(&head, "section .text");
 
-  // Pre-allocate addresses for literals
   wline(&data, "section .data");
+  wline(&bss, "section .bss");
+
   uint istr = 0, iflt = 0;
   while (HEAD != NULL) {
     Token *token = HEAD;
     HEAD = HEAD->next;
 
-    printf("%d -> %s \t [%x] \n", token->type, _val_(*token), token);
-
-    if (token->type != LiteralToken)
-      continue;
-
-    Literal *literal = &token->value.__l;
-    switch (literal->type) {
-    case StringValue: {
-      str str_name = fstr("str%u", istr++);
-      fline(&data, "%s: db \"%s\", 0x00", str_name, literal->value.__s);
-      literal->value.__s = malloc(strlen(str_name) * sizeof(char));
-      strcpy(literal->value.__s, str_name);
-      break;
-    }
-
-    case FloatValue:
-
-    default:
-      break;
-    }
-  }
-
-  // Reserve memory for variables
-  wline(&bss, "section .bss");
-  HEAD = _stream_head;
-
-  while (HEAD != NULL) {
-    Token *token = HEAD;
-    HEAD = HEAD->next;
-
-    if (token->type == DeclarationToken) {
-      Identifier *iden = &token->value.__i;
-      iden->name = fstr("_var_%s", iden->name);
-      fline(&bss, "%s: resb %d", iden->name, iden->msize);
-    } else if (token->type == ProcedureToken) {
-      Function *function = &token->value.__f;
-
-      function->name = fstr("_fn_%s", function->name);
-      str rt_name = fstr("rtn%s", function->name);
-
-      switch (function->type) {
-      case IntValue:
-        fline(&bss, "%s: resb %d", rt_name, sizeof(__int64_t));
-        break;
-      case FloatValue:
-        fline(&bss, "%s: resb %d", rt_name, sizeof(float));
-        break;
-      case StringValue:
-        fline(&bss, "%s: resb %d", rt_name, sizeof(char *));
-        break;
-      default:
+    // Pre-allocate addresses for literals
+    if (token->type == LiteralToken) {
+      Literal *literal = &token->value.__l;
+      switch (literal->type) {
+      case StringValue: {
+        str str_name = fstr("str%u", istr++);
+        fline(&data, "%s: db \"%s\", 0x00", str_name, literal->value.__s);
+        literal->value.__s = malloc(strlen(str_name) * sizeof(char));
+        strcpy(literal->value.__s, str_name);
         break;
       }
 
-      // uint params = 0;
+      case FloatValue:
 
-      // if (stream[++_ti].type == ExpressionStartToken)
-      // {
-      // 	while (stream[_ti].type != ExpressionEndToken)
-      // 		if (stream[++_ti].type == DeclarationToken)
-      // 			params++;
+      default:
+        break;
+      }
+    }
 
-      // 	function->nargs = params;
-      // }
+    // Reserve memory for variables
+    else if (token->type == DeclarationToken) {
+      Identifier *iden = &token->value.__i;
+      strcpy(iden->name, fstr("_var_%s", iden->name));
+      fline(&bss, "%s: resb %d", iden->name, iden->msize);
+    }
+
+    // Reserve memory for variables
+    else if (token->type == ProcedureToken) {
+      Function *function = &(token->value.__f);
+
+      strcpy(function->name, fstr("_fn_%s", function->name));
+      str rt_name = fstr("_rtn%s", function->name);
+      fline(&bss, "%s: resb %d", rt_name, typeSize(function->type));
+
+      if (token->next->type != ExpressionStartToken)
+        continue; // no args
+
+      uint params = 0;
+      rippleDeleteTokens(&token, 1); // remove opening paren
+      while (token->next->type != ExpressionEndToken) {
+        token = token->next;
+        if (token->type != DeclarationToken)
+          CompilerError(fstr("Invalid %s token in function declaration",
+                             strTokenType(token->type)));
+
+        params++;
+        Identifier *arg = &token->value.__i;
+        strcpy(arg->name, fstr("_var%s_%s", function->name, arg->name));
+        fline(&bss, "%s: resb %d", arg->name, arg->msize);
+      }
+
+      rippleDeleteTokens(&token, 1); // remove closing paren
+      function->nargs = params;
+      HEAD = token->next;
     }
   }
 
   // Iterate through functions
-  wline(&text, "section .text");
   wline(&text, "global _start");
   wline(&text, "_start:");
 
   // Iterate through tokens
   HEAD = _stream_head;
+  bool isProcedure = false;
+  uint blockDepth = 0;
+  str *targ;
+
+  printf("---Processed---\n");
   while (HEAD != NULL) {
     Token *token = HEAD;
     HEAD = HEAD->next;
+    targ = (isProcedure) ? &func : &text;
+
+    printf("[%x] %s -> %s\n", token, strTokenType(token->type), _val_(*token));
 
     switch (token->type) {
     case KeywordToken: {
-      Keyword value = token->value.__k;
-      switch (value) {
+      Keyword key = token->value.__k;
+      if (isBlockKeyword(key))
+        blockDepth++;
+
+      switch (key) {
       case SYSCALL: {
         uint _syscall_nargs = 0;
         token = token->next; // Move past this keyword
-
         while (token->value.__k != END) {
-          fline(&text, "mov %s, %s", syscall_argloc(_syscall_nargs++),
-                _val_(*token));
+          str loc = syscall_argloc(_syscall_nargs++);
+          fline(targ, "mov %s, %s", loc, _val_(*token));
           token = token->next;
         }
 
-        wline(&text, "syscall");
+        wline(targ, "syscall");
         HEAD = token;
         break;
       }
 
+      case END: {
+        if (blockDepth > 0)
+          blockDepth--;
+
+        if (blockDepth == 0 && isProcedure) {
+          wline(targ, "ret");
+          isProcedure = false;
+        }
+        break;
+      }
+
+      case INCLUDE:
+      case MACRO:
+      case IF:
+      case ELSE:
+      case WHILE:
+
       default:
         break;
       }
+
       break;
     }
 
-    case OperatorToken:
-      resolveOperator(&text, token);
+    case LiteralToken:
+      fline(targ, "mov rax, %s", _val_(*token));
       break;
 
-    case LiteralToken:
-      fline(&text, "mov rax, %s", _val_(*token));
+    case OperatorToken:
+      resolveOperator(targ, token);
       break;
 
     case ProcedureToken: {
-      Function fn = (*token).value.__f;
-      fline(&text, "%s:", fn.name);
-
+      resolveProcedure(&func, token);
+      isProcedure = true;
+      blockDepth++;
       break;
     }
-
-    case ExpressionStartToken:
-      /* code */
-      break;
-
-    case ExpressionEndToken:
-      /* code */
-      break;
     }
   }
 
-  // return 0;
+  // Add return 0 at end
   wline(&text, "mov rax, 60");
   wline(&text, "mov rdi, 0");
   wline(&text, "syscall");
 
   // Temporary clean to handle string corruption
   // @todo find why this is happening
-  clean_codegen(&head);
-  clean_codegen(&data);
-  clean_codegen(&text);
-  clean_codegen(&bss);
+  // clean_codegen(&head);
+  // clean_codegen(&data);
+  // clean_codegen(&text);
+  // clean_codegen(&bss);
 
   FILE *fout = fopen(outfile, "w");
   if (fout == NULL)
     CompilerError(fstr("Couldn't create \"%s\".", outfile));
 
   // Write all strings to file
-  fprintf(fout, "%s", head);
-  fprintf(fout, "%s\n", data);
-  fprintf(fout, "%s\n", bss);
-  fprintf(fout, "%s\n", text);
+  fprintf(fout, "%s\n", head);
+  fprintf(fout, "%s\n", func);
+  fprintf(fout, "%s\n\n", text);
+  fprintf(fout, "%s\n\n", data);
+  fprintf(fout, "%s\n\n", bss);
 
   fclose(fout);
 }
