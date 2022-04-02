@@ -332,9 +332,7 @@ void resolveNnaryOperator(str *ops, Token *operator) {
     while (nargs > 0) {
       if (args->type == OperatorToken)
         resolveOperator(ops, args);
-      fline(ops, "xor rbx, rbx");
-      fline(ops, "mov rbx, %s", _val_(*args));
-      fline(ops, "push rbx", _addr_(*args));
+      fline(ops, "push qword %s", _val_(*args));
       args = args->next;
       --nargs;
     }

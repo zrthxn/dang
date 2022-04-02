@@ -1,12 +1,14 @@
 BITS 64
-section .data
-str0: db "Hello, World!", 0x00
-str1: db "Goodnight Tennessee", 0x00
-section .bss
-_var_greet: resb 8
-_var_greet2: resb 8
-_var_code: resb 8
+
 section .text
+_fn_exit:
+pop rsi
+pop qword [_var_fn_exit_status]
+push rsi
+mov rax, 60
+mov rdi, [_var_fn_exit_status]
+syscall
+ret
 global _start
 _start:
 mov rax, 1
@@ -21,86 +23,25 @@ mov rdi, 1
 mov rsi, [_var_greet]
 mov rdx, 19
 syscall
-mov rsi, [_var_greet]
-mov qword [_var_greet2], rsi
-mov rax, 1
-mov rdi, 1
-mov rsi, [_var_greet2]
-mov rdx, 19
-syscall
-mov rax, 9
+mov qword [_var_code], 69
+mov rax, 69
+mov rax, [_var_code]
 add rax, 1
 mov rdx, rax
-mov rax, 8
-sub rax, rdx
-mov rdx, rax
-mov rax, 3
-add rax, rdx
-mov rdx, rax
-mov rax, 4
-sub rax, rdx
-mov rdx, rax
-mov rax, 7
-sub rax, rdx
-mov rdx, rax
-mov rax, 2
-add rax, rdx
-mov rdx, rax
-mov rax, 3
-sub rax, rdx
-mov rdx, rax
-mov rax, 4
-add rax, rdx
-mov rdx, rax
-mov rax, 3
-sub rax, rdx
-mov rdx, rax
-mov rax, 2
-sub rax, rdx
-mov rdx, rax
-mov rax, 5
-add rax, rdx
-mov rdx, rax
-mov rax, 1
-add rax, rdx
-mov rdx, rax
-mov rax, 9
-add rax, rdx
-mov rdx, rax
-mov rax, 8
-sub rax, rdx
-mov rdx, rax
-mov rax, 3
-add rax, rdx
-mov rdx, rax
-mov rax, 4
-sub rax, rdx
-mov rdx, rax
-mov rax, 7
-sub rax, rdx
-mov rdx, rax
-mov rax, 2
-add rax, rdx
-mov rdx, rax
-mov rax, 3
-sub rax, rdx
-mov rdx, rax
-mov rax, 4
-add rax, rdx
-mov rdx, rax
-mov rax, 3
-sub rax, rdx
-mov rdx, rax
-mov rax, 2
-sub rax, rdx
-mov rdx, rax
-mov rax, 5
-add rax, rdx
-mov rdx, rax
-mov [_var_code], rdx
-mov rax, 60
-mov rdi, [_var_code]
-syscall
+push qword rdx
+call _fn_exit
+mov rdx, [_rtn_fn_exit]
 mov rax, 60
 mov rdi, 0
 syscall
+
+section .data
+str0: db "Hello, World!", 0x00
+str1: db "Goodnight Tennessee", 0x00
+
+section .bss
+_var_greet: resb 8
+_rtn_fn_exit: resb 8
+_var_fn_exit_status: resb 8
+_var_code: resb 8
+
