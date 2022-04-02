@@ -102,7 +102,7 @@ void fline(str *buf, str ln, ...) {
   uint _size = strlen(*buf);
   str new = malloc((_size + (_size > 0 ? 2 : 1) + flen) * sizeof(char));
   strcpy(new, *buf);
-  free(*buf);
+  // free(*buf);
 
   if (_size > 0)
     new[_size++] = '\n';

@@ -3,11 +3,16 @@ syscall 1 1 "Hello, World!" 13 end
 let greet:str = "Goodnight Tennessee"
 syscall 1 1 greet 19 end
 
-let greet2:str = greet
-syscall 1 1 greet2 19 end
+# let greet2:str = greet
+# syscall 1 1 greet2 19 end
 
-let code:int = 5 + 2 - 3 - 4 + 3 - 2 + 7 - 4 - 3 + 8 - 9 + 1 + 5 + 2 - 3 - 4 + 3 - 2 + 7 - 4 - 3 + 8 - 9 + 1
-syscall 60 code end
+fn exit:null ( let status:int ) 
+  syscall 60 status end
+end
+
+let code:int = 69
+# syscall 60 code end
+exit <| code + 1
 
 # macro exit [ syscall 60 ] end
 # exit 0 end
