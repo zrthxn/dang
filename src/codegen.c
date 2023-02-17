@@ -228,7 +228,7 @@ void resolveBinaryOperator(str *ops, Token *operator) {
     else
       CompilerError("Assignment should be from literal or variable.");
 
-    rippleDeleteTokens(&operator, 2);
+    rippleDeleteTokens(&(operator->prev), 3);
     break;
   }
 
@@ -338,7 +338,8 @@ void resolveNnaryOperator(str *ops, Token *operator) {
     }
 
     fline(ops, "call %s", fn.name);
-    fline(ops, "mov rdx, [_rtn%s]", fn.name);
+    fline(ops, "pop rdx", fn.name);
+    // fline(ops, "mov rdx, [_rtn%s]", fn.name);
 
     operator->type = MemoryToken;
     operator->value.m = fstr("rdx");
@@ -370,7 +371,7 @@ bool isBlockKeyword(Keyword key) {
   }
 }
 
-void resolveProcedure(str *func, Token *token) {
+void resolveProcedureArgs(str *func, Token *token) {
   Function fn = token->value.__f;
   fline(func, "%s:", fn.name);
 
@@ -380,24 +381,6 @@ void resolveProcedure(str *func, Token *token) {
     wline(func, "pop rsi");
     fline(func, "pop qword %s", _val_(*token));
     wline(func, "push rsi");
-    token = token->next;
-  }
-    
-  uint localBlockDepth = 0;
-  while (true) {
-    if (token->type == KeywordToken) {
-      if (isBlockKeyword(token->value.__k))
-        localBlockDepth++;
-      else if (token->value.__k == END) {
-        if (localBlockDepth > 0)
-          localBlockDepth--;
-        else
-          break;
-      }
-    } else if (token->type == DeclarationToken)
-      strcpy(token->value.__i.name,
-             fstr("%s%s", fn.name, token->value.__i.name));
-
     token = token->next;
   }
 }
@@ -461,8 +444,8 @@ void codegen(TokenStream _stream_head, str outfile) {
       Function *function = &(token->value.__f);
 
       strcpy(function->name, fstr("_fn_%s", function->name));
-      str rt_name = fstr("_rtn%s", function->name);
-      fline(&bss, "%s: resb %d", rt_name, typeSize(function->type));
+      // str rt_name = fstr("_rtn%s", function->name);
+      // fline(&bss, "%s: resb %d", rt_name, typeSize(function->type));
 
       if (token->next->type != ExpressionStartToken)
         continue; // no args
@@ -484,6 +467,25 @@ void codegen(TokenStream _stream_head, str outfile) {
       rippleDeleteTokens(&token, 1); // remove closing paren
       function->nargs = params;
       HEAD = token->next;
+
+      uint localBlockDepth = 0;
+      token = token->next;
+      while (true) {
+        if (token->type == KeywordToken) {
+          if (isBlockKeyword(token->value.__k))
+            localBlockDepth++;
+          else if (token->value.__k == END) {
+            if (localBlockDepth > 0)
+              localBlockDepth--;
+            else
+              break;
+          }
+        } else if (token->type == DeclarationToken)
+          strcpy(token->value.__i.name,
+                fstr("%s_%s", function->name, token->value.__i.name));
+
+        token = token->next;
+      }
     }
   }
 
@@ -516,6 +518,8 @@ void codegen(TokenStream _stream_head, str outfile) {
         uint _syscall_nargs = 0;
         token = token->next; // Move past this keyword
         while (token->value.__k != END) {
+          if (token->type == OperatorToken)
+            resolveOperator(targ, token);
           str loc = syscall_argloc(_syscall_nargs++);
           fline(targ, "mov %s, %s", loc, _val_(*token));
           token = token->next;
@@ -534,6 +538,20 @@ void codegen(TokenStream _stream_head, str outfile) {
           wline(targ, "ret");
           isProcedure = false;
         }
+        break;
+      }
+
+      case RETURN: {
+        token = token->next; // Move past this keyword
+        wline(targ, "pop rsi");
+        if (token->type == IdentifierToken)
+          fline(targ, "push qword %s", _val_(*token));
+        else
+          fline(targ, "push 0");
+        
+        wline(targ, "push rsi");
+        wline(targ, "ret");
+        HEAD = token->next;
         break;
       }
 
@@ -559,7 +577,7 @@ void codegen(TokenStream _stream_head, str outfile) {
       break;
 
     case ProcedureToken: {
-      resolveProcedure(&func, token);
+      resolveProcedureArgs(&func, token);
       isProcedure = true;
       blockDepth++;
       break;

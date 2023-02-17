@@ -1,0 +1,27 @@
+{
+    "name": "zxdang",
+    "displayName": "Dang Language Syntax Highlighting",
+    "description": "Simple syntax highlighting for my Dang programming language",
+    "version": "0.0.1",
+		"publisher": "zrthxn",
+		"repository": "",
+    "engines": {
+        "vscode": "^1.66.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "dang",
+            "aliases": ["Dang", "dang"],
+            "extensions": [".dang"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "dang",
+            "scopeName": "source.dang",
+            "path": "./syntaxes/dang.tmLanguage.json"
+        }]
+    }
+}

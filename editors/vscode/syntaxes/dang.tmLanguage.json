@@ -1,0 +1,55 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Dang",
+	"patterns": [
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#types"
+		},
+		{
+			"include": "#strings"
+		}
+	],
+	"repository": {
+		"comments": {
+			"name": "comment.block",
+			"begin": "#",
+			"end": "\\n",
+			"patterns": [
+				{
+					"name": "comment.line",
+					"match": "#"
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.dang",
+				"match": "\\b(let|fn|if|then|elif|else|end|while|do|return|include|syscall|macro)\\b"
+			}]
+		},
+		"types": {
+			"patterns": [{
+				"name": "entity.name.type.dang",
+				"match": "\\b(int|str|float|null)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.dang",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.dang",
+					"match": "\\*\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.dang"
+}
