@@ -63,9 +63,9 @@ int main(int argc, str argv[])
 	int n_targets = 0, n_cflags = 0;
 
 	int __c = argc;
-	while (argc)
+	while (__c)
 	{
-		str arg = argv[--argc];
+		str arg = argv[--__c];
 		if (isTargetFile(arg))
 			targets[n_targets++] = arg;
 		else if (isCompilerFlag(arg))
@@ -74,9 +74,9 @@ int main(int argc, str argv[])
 			printf("[INFO] Ignoring unknown argument \"%s\"\n", arg);
 	}
 
-	for (size_t i = n_targets; i < __c; i++)
+	for (size_t i = n_targets; i < argc; i++)
 		free(targets[i]);
-	for (size_t i = n_cflags; i < __c; i++)
+	for (size_t i = n_cflags; i < argc; i++)
 		free(cflags[i]);
 
 	// Initialize list of targets
