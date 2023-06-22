@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #ifndef UTILS_C_INCLUDED
 #define UTILS_C_INCLUDED
