@@ -1,28 +1,26 @@
-syscall 1 1 "Hello, World!" 13 end
+syscall(1, 1, "Hello, World!", 13);
 
 # let greet:str = "Goodnight Tennessee"
 # syscall 1 1 greet 19 end
 
-# let greet2:str = greet
-# syscall 1 1 greet2 19 end
+fn exit (status:int) {
+  syscall(60, status);
+}
 
-fn exit:null ( let status:int ) 
-  syscall 60 status end
-end
+let code:int = 69 + 73* 06 / 78+23-5;
+exit(code);
 
-fn strlen:int ( let s:str )
-  let len:int = 0
-  while @s + len != 0 do
-    len++
-  end
-  return len
-end
+# fn strlen:int (s:str) {
+#   let len:int = 0;
+#   while @s + len != 0 {
+#     len++;
+#   }
+#   return len;
+# }
 
-let len:int = strlen <| greet
-syscall 1 1 greet len end
-
-let code:int = 69
-exit <| code + 1
+# let len:int = strlen <| greet
+# syscall 1 1 greet len end
+# 
 
 # macro exit [ syscall 60 ] end
 # exit 0 end

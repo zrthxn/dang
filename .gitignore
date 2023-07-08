@@ -13,3 +13,5 @@ dang
 # Dont keep intermediate files
 *.o
 *.out
+
+__pycache__/

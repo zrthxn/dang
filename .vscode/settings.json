@@ -25,5 +25,12 @@
     "random": "c",
     "vector": "c",
     "stddef.h": "c"
+  },
+  "python.defaultInterpreterPath": "python",
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
   }
 }
