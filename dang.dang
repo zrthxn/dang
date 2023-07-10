@@ -1,18 +1,32 @@
-syscall(1, 1, "Hello, World!", 13);
+let count:int = 1000;
+let greet:str = "Goodnight Tennessee";
 
-# let greet:str = "Goodnight Tennessee"
-# syscall 1 1 greet 19 end
+# syscall(1, 1, "Hello, World!", 13);
 
-fn exit (status:int) {
-  syscall(60, status);
-}
+# fn sys_print (string:str) {
+#     asm {
+#         mov rax, 1
+#         mov rdi, 1
+#         mov rsi, {string}
+#         mov rdx, {len(string)}
+#         syscall
+#     }
+# }
 
-let code:int = 69 + 73* 06 / 78+23-5;
-exit(code);
+# fn sys_exit (status:int) {
+#     asm {
+#         mov rax, 60
+#         mov rdi, {status}
+#         syscall
+#     }
+# }
 
-# fn strlen:int (s:str) {
+# let code:int = 69 + 73* 06 / 78+23-5;
+# exit(code);
+
+# fn len:int (s:str) {
 #   let len:int = 0;
-#   while @s + len != 0 {
+#   while @s + len != null {
 #     len++;
 #   }
 #   return len;
@@ -22,29 +36,12 @@ exit(code);
 # syscall 1 1 greet len end
 # 
 
-# macro exit [ syscall 60 ] end
-# exit 0 end
-# 
-# macro print [ syscall 1 1 ] end
-# print greet 19 end
-# 
-# macro print [ syscall 1 1 $ $ end ] end
-# print(greet,19)
-
-# fn exit:null ( let status:int ) 
-#   syscall 60 status end
-# end
-# 
-# exit <| 0
-
 # I support comments now
 # let bye:int = 23 + 45 * 3 / 4
 
 # fn print:null ( let s:str )
 #   syscall 1 1 s strlen <| s end
 # end
-
-# print <| greet
 
 # if cond1 && cond 2 then
 #   print <| greet

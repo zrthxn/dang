@@ -30,7 +30,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.dang",
-				"match": "\\b(let|fn|if|then|elif|else|end|while|do|return|include|syscall|macro)\\b"
+				"match": "\\b(let|fn|if|then|elif|else|end|while|do|return|include|macro|null|asm)\\b"
 			}]
 		},
 		"types": {
