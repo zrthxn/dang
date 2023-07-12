@@ -12,7 +12,7 @@ class Token:
     loc: tuple
     cls: str
     
-    def __init__(self, _w, _l) -> None:
+    def __init__(self, _w, _l = tuple()) -> None:
         self.lex = _w
         self.loc = _l
         
@@ -37,7 +37,10 @@ class Token:
         assert self.cls in vocab.TOKEN_TYPES
     
     def __repr__(self) -> str:
-        return f"Token{self.loc}<{self.cls} <{self.lex}>>"
+        return f"{self.cls}<{self.lex}>"
+    
+    def __eq__(self, __value: str) -> bool:
+        return self.lex == __value 
 
 
 def tokenize(file: str) -> List[Token]:

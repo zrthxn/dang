@@ -18,10 +18,13 @@
       "cwd": "${workspaceFolder}"
     },
     {
-      "name": "Python: Current File",
+      "name": "PyDang",
       "type": "python",
       "request": "launch",
-      "program": "${file}",
+      "program": "dang.py",
+      "args": [
+        "dang.dang"
+      ],
       "console": "integratedTerminal",
       "justMyCode": true
     }

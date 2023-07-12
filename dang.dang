@@ -1,4 +1,4 @@
-let count:int = 1000;
+let count:int = 1000 + 2000;
 let greet:str = "Goodnight Tennessee";
 
 # syscall(1, 1, "Hello, World!", 13);
@@ -26,7 +26,7 @@ let greet:str = "Goodnight Tennessee";
 
 # fn len:int (s:str) {
 #   let len:int = 0;
-#   while @s + len != null {
+#   while (s + len != null) {
 #     len++;
 #   }
 #   return len;

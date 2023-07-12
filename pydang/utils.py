@@ -26,6 +26,36 @@ def index_to_loc(file: str, index: int) -> Tuple[int, int]:
     raise ValueError("Index outside file length!")
 
 
+class Stack(list):
+    """ Dummy wrapper around list for naming convention
+    """
+    
+    def push(self, __object):
+        super().append(__object)
+    
+    @property
+    def empty(self) -> bool:
+        return len(self) == 0
+
+
+class Scope(dict):
+    """ Dummy wrapper around dict
+    """
+    
+    def push(self, __name: str, __object):
+        assert __name not in self, f"{__name} exists in scope"
+        self[__name] = __object
+    
+    @property
+    def empty(self) -> bool:
+        return len(self) == 0
+    
+    @classmethod
+    def from_parent(cls, parent):
+        new = cls()
+        new.update(parent)
+        return new
+
 # #include <stddef.h>
 # #include <stdio.h>
 # #include <stdlib.h>

@@ -28,17 +28,18 @@ OPERATORS = {
     SUB := '-',
     MUL := '*', 
     DIV := '/', 
-    EQL := '=', 
     
-    '.', 
+    ASSIGN := '=', 
+    ACCESS := '.', 
+    DEREF  := '@', 
     '?', 
-    '@', 
     
-    '!',  
+    AND := '&', 
+    OR  := '|', 
+    NOT := '!',  
     '$', 
-    '%', 
-    '&', 
-    '^', 
+    MOD := '%', 
+    XOR := '^', 
     '~', 
 }
 
@@ -55,8 +56,8 @@ CLOSURES = {
 
 
 PUNCTUATION = {
-    LF := '\n',
-    CR := '\r',
+    LF  := '\n',
+    CR  := '\r',
     TAB := '\t',
     
     SPACE := ' ',
@@ -83,6 +84,9 @@ KEYWORDS = {
     KW_MACRO    := "macro",
     KW_NULL     := "null",
     KW_ASM      := "asm",
+    KW_MOV      := "mov",
+    KW_PUSH     := "push",
+    KW_POP      := "pop",
 }
 
 
@@ -93,4 +97,11 @@ TOKEN_TYPES = {
     ClosureToken := "closure",
     LiteralToken := "literal",
     PunctToken := "punct",
+}
+
+DATA_TYPES = {
+    "str",
+    "int",
+    "float",
+    "bool",
 }
